@@ -1,0 +1,28 @@
+services:
+  node:
+    image: ghcr.io/actaboards/actaboards-core:latest
+    container_name: actaboards-indexer
+    hostname: indexer
+    entrypoint: []
+    environment:
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+    command:
+      - /usr/local/bin/witness_node
+      - --data-dir=/data
+      - --genesis-json=/genesis/genesis.json
+      - --p2p-endpoint=0.0.0.0:2771
+      - --rpc-endpoint=0.0.0.0:8090
+      - --seed-nodes=["node01.acta.network:2771"]
+      - --plugins=witness content_cards postgres_content
+      - --postgres-content-url=${POSTGRES_URL:-postgresql://app:05fUn7cJ0DhJed7L7EpFUXQCnwppmDhFJwVRD7Wy9OilSIrpdfcyG3fG8pHzPWcY@actaboards-public-postgres-rw.actaboards-public.svc.cluster.local:5432/app?sslmode=disable}
+      - --postgres-content-start-block=${START_BLOCK:-0}
+      - --ignore-api-helper-indexes-warning
+    volumes:
+      - ./data:/data
+      - ../../actaboards-genesis:/genesis:ro
+    ports:
+      - "8090:8090"
+      - "2771:2771"
+    network_mode: host
+    restart: unless-stopped
