@@ -45,3 +45,5 @@ object_database/*
 build/*
 dbuild/*
 .vscode
+
+bin/data/
