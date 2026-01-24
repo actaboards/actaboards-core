@@ -19,9 +19,10 @@ target_include_directories( graphene_postgres_content
    PUBLIC ${LIBPQ_INCLUDE_DIRS}
 )
 
-target_link_directories( graphene_postgres_content
-   PUBLIC ${LIBPQ_LIBRARY_DIRS}
-)
+# For CMake < 3.13, use link_directories instead of target_link_directories
+if(LIBPQ_LIBRARY_DIRS)
+   link_directories(${LIBPQ_LIBRARY_DIRS})
+endif()
 
 install( TARGETS
    graphene_postgres_content
