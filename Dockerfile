@@ -24,6 +24,7 @@ RUN \
       libboost-regex-dev \
       libboost-coroutine-dev \
       libpq-dev \
+      pkg-config \
       libtool \
       doxygen \
       ca-certificates \
@@ -58,6 +59,12 @@ RUN \
     rm -rf /rsquared-core
 
 FROM phusion/baseimage:18.04-1.0.0 AS run
+
+# Runtime dependencies
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends libpq5 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /usr/local/bin /usr/local/bin
 COPY --from=build /etc/rsquared/version /etc/rsquared/version
