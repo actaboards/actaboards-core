@@ -38,6 +38,7 @@
 #include <graphene/api_helper_indexes/api_helper_indexes.hpp>
 #include <graphene/custom_operations/custom_operations_plugin.hpp>
 #include <graphene/content_cards/content_cards.hpp>
+#include <graphene/postgres_content/postgres_content_plugin.hpp>
 
 #include <fc/thread/thread.hpp>
 #include <fc/interprocess/signals.hpp>
@@ -124,6 +125,7 @@ int main(int argc, char** argv) {
       node->register_plugin<graphene::api_helper_indexes::api_helper_indexes>();
       node->register_plugin<graphene::custom_operations::custom_operations_plugin>();
       node->register_plugin<graphene::content_cards::content_cards_plugin>();
+      node->register_plugin<graphene::postgres_content::postgres_content_plugin>();
 
       // add plugin options to config
       try

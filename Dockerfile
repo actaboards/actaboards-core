@@ -23,6 +23,7 @@ RUN \
       libboost-context-dev \
       libboost-regex-dev \
       libboost-coroutine-dev \
+      libpq-dev \
       libtool \
       doxygen \
       ca-certificates \
