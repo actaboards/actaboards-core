@@ -119,7 +119,7 @@ bool postgres_content_plugin_impl::connect_to_postgres()
 bool postgres_content_plugin_impl::create_tables()
 {
    const std::string sql = R"(
-      CREATE TABLE IF NOT EXISTS content_cards (
+      CREATE TABLE IF NOT EXISTS indexer_content_cards (
          id SERIAL PRIMARY KEY,
          content_card_id VARCHAR(32) NOT NULL,
          subject_account VARCHAR(32) NOT NULL,
@@ -138,12 +138,12 @@ bool postgres_content_plugin_impl::create_tables()
          UNIQUE(content_card_id)
       );
 
-      CREATE INDEX IF NOT EXISTS idx_cc_subject ON content_cards(subject_account);
-      CREATE INDEX IF NOT EXISTS idx_cc_block_time ON content_cards(block_time DESC);
-      CREATE INDEX IF NOT EXISTS idx_cc_type ON content_cards(type);
-      CREATE INDEX IF NOT EXISTS idx_cc_is_removed ON content_cards(is_removed);
+      CREATE INDEX IF NOT EXISTS idx_cc_subject ON indexer_content_cards(subject_account);
+      CREATE INDEX IF NOT EXISTS idx_cc_block_time ON indexer_content_cards(block_time DESC);
+      CREATE INDEX IF NOT EXISTS idx_cc_type ON indexer_content_cards(type);
+      CREATE INDEX IF NOT EXISTS idx_cc_is_removed ON indexer_content_cards(is_removed);
 
-      CREATE TABLE IF NOT EXISTS permissions (
+      CREATE TABLE IF NOT EXISTS indexer_permissions (
          id SERIAL PRIMARY KEY,
          permission_id VARCHAR(32) NOT NULL,
          subject_account VARCHAR(32) NOT NULL,
@@ -160,11 +160,11 @@ bool postgres_content_plugin_impl::create_tables()
          UNIQUE(permission_id)
       );
 
-      CREATE INDEX IF NOT EXISTS idx_perm_subject ON permissions(subject_account);
-      CREATE INDEX IF NOT EXISTS idx_perm_operator ON permissions(operator_account);
-      CREATE INDEX IF NOT EXISTS idx_perm_object ON permissions(object_id);
-      CREATE INDEX IF NOT EXISTS idx_perm_block_time ON permissions(block_time DESC);
-      CREATE INDEX IF NOT EXISTS idx_perm_is_removed ON permissions(is_removed);
+      CREATE INDEX IF NOT EXISTS idx_perm_subject ON indexer_permissions(subject_account);
+      CREATE INDEX IF NOT EXISTS idx_perm_operator ON indexer_permissions(operator_account);
+      CREATE INDEX IF NOT EXISTS idx_perm_object ON indexer_permissions(object_id);
+      CREATE INDEX IF NOT EXISTS idx_perm_block_time ON indexer_permissions(block_time DESC);
+      CREATE INDEX IF NOT EXISTS idx_perm_is_removed ON indexer_permissions(is_removed);
    )";
 
    if (!execute_sql(sql)) {
@@ -246,7 +246,7 @@ void postgres_content_plugin_impl::handle_content_card_create(
    std::string subject_account = std::string(object_id_type(op.subject_account));
    std::string content_card_id = object_id.empty() ? ("pending-" + trx_id) : object_id;
 
-   std::string sql = "INSERT INTO content_cards "
+   std::string sql = "INSERT INTO indexer_content_cards "
       "(content_card_id, subject_account, hash, url, type, description, content_key, storage_data, "
       "block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
       + escape_string(content_card_id) + ", "
@@ -281,7 +281,7 @@ void postgres_content_plugin_impl::handle_content_card_update(
    std::string subject_account = std::string(object_id_type(op.subject_account));
    std::string content_card_id = object_id.empty() ? ("pending-" + trx_id) : object_id;
 
-   std::string sql = "INSERT INTO content_cards "
+   std::string sql = "INSERT INTO indexer_content_cards "
       "(content_card_id, subject_account, hash, url, type, description, content_key, storage_data, "
       "block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
       + escape_string(content_card_id) + ", "
@@ -315,7 +315,7 @@ void postgres_content_plugin_impl::handle_content_card_remove(
 {
    std::string content_id = std::string(object_id_type(op.content_id));
 
-   std::string sql = "UPDATE content_cards SET "
+   std::string sql = "UPDATE indexer_content_cards SET "
       "is_removed = TRUE, "
       "block_num = " + std::to_string(block_num) + ", "
       "block_time = to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
@@ -339,7 +339,7 @@ void postgres_content_plugin_impl::handle_permission_create(
    std::string ref_object_id = op.object_id.valid() ? std::string(object_id_type(*op.object_id)) : "";
    std::string permission_id = new_object_id.empty() ? ("pending-" + trx_id) : new_object_id;
 
-   std::string sql = "INSERT INTO permissions "
+   std::string sql = "INSERT INTO indexer_permissions "
       "(permission_id, subject_account, operator_account, permission_type, object_id, content_key, "
       "block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
       + escape_string(permission_id) + ", "
@@ -368,7 +368,7 @@ void postgres_content_plugin_impl::handle_permission_remove(
 {
    std::string permission_id = std::string(object_id_type(op.permission_id));
 
-   std::string sql = "UPDATE permissions SET "
+   std::string sql = "UPDATE indexer_permissions SET "
       "is_removed = TRUE, "
       "block_num = " + std::to_string(block_num) + ", "
       "block_time = to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
