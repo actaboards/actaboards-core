@@ -44,7 +44,7 @@ void_result asset_create_evaluator::do_evaluate( const asset_create_operation& o
 
    const database& d = db();
 
-   const account_object& rsquaredchp1_account = *d.get_index_type<account_index>().indices().get<by_name>().find("rsquaredchp1");
+   // const account_object& rsquaredchp1_account = *d.get_index_type<account_index>().indices().get<by_name>().find("rsquaredchp1");
    // FC_ASSERT( op.issuer == rsquaredchp1_account.get_id(),
    //             "At the moment, the user ${u} is not allowed to be a creator for a coin ${s}.",
    //             ("u",op.issuer(d).name)("s",op.symbol) );
