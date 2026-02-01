@@ -51,6 +51,7 @@ struct hardfork_visitor {
                                 custom_authority_delete_operation>;
    using ticket_ops  = TL::list<ticket_create_operation, ticket_update_operation>;
    using ico_ops     = TL::list<ico_balance_claim_operation>;
+   using permission_many_ops = TL::list<permission_create_many_operation>;
 
    fc::time_point_sec now;
 
@@ -69,6 +70,9 @@ struct hardfork_visitor {
    visit() { return true; }
    template<typename Op>
    std::enable_if_t<TL::contains<ico_ops, Op>(), bool>
+   visit() { return true; }
+   template<typename Op>
+   std::enable_if_t<TL::contains<permission_many_ops, Op>(), bool>
    visit() { return true; }
    /// @}
 
