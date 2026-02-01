@@ -56,6 +56,9 @@ class postgres_content_plugin_impl
       void handle_permission_create(const permission_create_operation& op,
                                      uint32_t block_num, fc::time_point_sec block_time,
                                      const std::string& trx_id, const std::string& object_id);
+      void handle_permission_create_many(const permission_create_many_operation& op,
+                                     uint32_t block_num, fc::time_point_sec block_time,
+                                     const std::string& trx_id, const flat_set<object_id_type>& new_objects);
       void handle_permission_remove(const permission_remove_operation& op,
                                      uint32_t block_num, fc::time_point_sec block_time,
                                      const std::string& trx_id);
@@ -235,6 +238,14 @@ void postgres_content_plugin_impl::on_block(const signed_block& b)
          handle_permission_remove(op.get<permission_remove_operation>(),
                                    block_num, b.timestamp, trx_id);
       }
+      else if (op_type == 64) {
+         flat_set<object_id_type> new_objects;
+         if (result.which() == 3) {
+            new_objects = result.get<generic_operation_result>().new_objects;
+         }
+         handle_permission_create_many(op.get<permission_create_many_operation>(),
+                                   block_num, b.timestamp, trx_id, new_objects);
+      }
    }
 }
 
@@ -359,6 +370,50 @@ void postgres_content_plugin_impl::handle_permission_create(
       elog("Failed to insert permission_create: block ${b}", ("b", block_num));
    } else {
       ilog("Indexed permission_create at block ${b}, id ${id}", ("b", block_num)("id", permission_id));
+   }
+}
+
+void postgres_content_plugin_impl::handle_permission_create_many(
+   const permission_create_many_operation& op,
+   uint32_t block_num, fc::time_point_sec block_time, const std::string& trx_id,
+   const flat_set<object_id_type>& new_objects)
+{
+   std::string subject_account = std::string(object_id_type(op.subject_account));
+
+   auto obj_it = new_objects.begin();
+   for (size_t i = 0; i < op.permissions.size(); ++i) {
+      const auto& perm = op.permissions[i];
+      std::string operator_account = std::string(object_id_type(perm.operator_account));
+      std::string ref_object_id = perm.object_id.valid() ? std::string(object_id_type(*perm.object_id)) : "";
+      std::string permission_id;
+      if (obj_it != new_objects.end()) {
+         permission_id = std::string(*obj_it);
+         ++obj_it;
+      } else {
+         permission_id = "pending-" + trx_id + "-" + std::to_string(i);
+      }
+
+      std::string sql = "INSERT INTO indexer_permissions "
+         "(permission_id, subject_account, operator_account, permission_type, object_id, content_key, "
+         "block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
+         + escape_string(permission_id) + ", "
+         + escape_string(subject_account) + ", "
+         + escape_string(operator_account) + ", "
+         + escape_string(perm.permission_type) + ", "
+         + escape_string(ref_object_id) + ", "
+         + escape_string(perm.content_key) + ", "
+         + std::to_string(block_num) + ", "
+         "to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
+         + escape_string(trx_id) + ", "
+         "64, FALSE) "
+         "ON CONFLICT (permission_id) DO UPDATE SET "
+         "permission_type = EXCLUDED.permission_type, content_key = EXCLUDED.content_key";
+
+      if (!execute_sql(sql)) {
+         elog("Failed to insert permission_create_many: block ${b}", ("b", block_num));
+      } else {
+         ilog("Indexed permission_create_many at block ${b}, id ${id}", ("b", block_num)("id", permission_id));
+      }
    }
 }
 

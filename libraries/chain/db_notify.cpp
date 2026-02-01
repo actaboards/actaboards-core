@@ -322,6 +322,15 @@ struct get_impacted_account_visitor
       _impacted.insert( op.fee_payer() );
       _impacted.insert( op.subject_account );
    }
+   void operator()( const permission_create_many_operation& op )
+   {
+      _impacted.insert( op.fee_payer() );
+      _impacted.insert( op.subject_account );
+      for( const auto& perm : op.permissions )
+      {
+         _impacted.insert( perm.operator_account );
+      }
+   }
    void operator()( const permission_remove_operation& op )
    {
       _impacted.insert( op.fee_payer() );

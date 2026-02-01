@@ -411,6 +411,10 @@ public:
          const string content_key,
          bool broadcast = false );
 
+   signed_transaction create_permission_many( const string subject_account,
+         const vector<permission_create_many_operation::permission_data>& permissions,
+         bool broadcast = false );
+
    signed_transaction remove_permission( const string subject_account,
          uint64_t permission_id,
          bool broadcast = false );

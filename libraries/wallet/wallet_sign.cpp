@@ -694,6 +694,24 @@ namespace graphene { namespace wallet { namespace detail {
       return sign_transaction(tx, broadcast);
    } FC_CAPTURE_AND_RETHROW( (subject_account)(operator_account)(permission_type)(object_id)(content_key)(broadcast) ) }
 
+   signed_transaction wallet_api_impl::create_permission_many( const string subject_account,
+      const vector<permission_create_many_operation::permission_data>& permissions,
+      bool broadcast )
+   { try {
+      auto subject_id = get_account(subject_account).get_id();
+
+      permission_create_many_operation create_perm_op;
+      create_perm_op.subject_account = subject_id;
+      create_perm_op.permissions = permissions;
+
+      signed_transaction tx;
+      tx.operations.push_back(create_perm_op);
+      set_operation_fees(tx, _remote_db->get_global_properties().parameters.get_current_fees());
+      tx.validate();
+
+      return sign_transaction(tx, broadcast);
+   } FC_CAPTURE_AND_RETHROW( (subject_account)(permissions)(broadcast) ) }
+
    signed_transaction wallet_api_impl::remove_permission( const string subject_account,
       uint64_t permission_id,
       bool broadcast )

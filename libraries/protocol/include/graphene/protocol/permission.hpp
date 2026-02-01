@@ -62,6 +62,36 @@ namespace graphene { namespace protocol {
    };
 
    /**
+    * @brief Create multiple permission objects at once
+    *
+    * This operation is used to create multiple permission_objects in a single transaction.
+    */
+   struct permission_create_many_operation : public base_operation
+   {
+      struct fee_parameters_type { share_type fee = 300000; };
+
+      struct permission_data {
+         account_id_type operator_account;
+         string permission_type;
+         optional<object_id_type> object_id;
+         string content_key;
+      };
+
+      asset           fee;
+      account_id_type subject_account;
+      vector<permission_data> permissions;
+
+      account_id_type fee_payer()const { return subject_account; }
+      void            validate()const;
+      share_type      calculate_fee(const fee_parameters_type& )const;
+
+      void get_required_active_authorities( flat_set<account_id_type>& a )const
+      {
+         a.insert( subject_account );
+      }
+   };
+
+   /**
     * @brief Remove a permission object
     *
     * This operation is used to remove the permission_object.
@@ -93,6 +123,14 @@ FC_REFLECT( graphene::protocol::permission_create_operation,
             (fee)
             (subject_account)(operator_account)(permission_type)(object_id)(content_key)
           )
+FC_REFLECT( graphene::protocol::permission_create_many_operation::fee_parameters_type, (fee) )
+FC_REFLECT( graphene::protocol::permission_create_many_operation::permission_data,
+            (operator_account)(permission_type)(object_id)(content_key)
+          )
+FC_REFLECT( graphene::protocol::permission_create_many_operation,
+            (fee)
+            (subject_account)(permissions)
+          )
 FC_REFLECT( graphene::protocol::permission_remove_operation::fee_parameters_type, (fee) )
 FC_REFLECT( graphene::protocol::permission_remove_operation,
             (fee)
@@ -101,4 +139,5 @@ FC_REFLECT( graphene::protocol::permission_remove_operation,
 
 
 GRAPHENE_DECLARE_EXTERNAL_SERIALIZATION( graphene::protocol::permission_create_operation )
+GRAPHENE_DECLARE_EXTERNAL_SERIALIZATION( graphene::protocol::permission_create_many_operation )
 GRAPHENE_DECLARE_EXTERNAL_SERIALIZATION( graphene::protocol::permission_remove_operation )

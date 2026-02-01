@@ -39,6 +39,18 @@ void permission_create_operation::validate()const
    FC_ASSERT( fee.amount >= 0 );
 }
 
+share_type permission_create_many_operation::calculate_fee( const fee_parameters_type& k )const
+{
+   return 0;
+}
+
+
+void permission_create_many_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( !permissions.empty(), "Permissions list cannot be empty" );
+}
+
 share_type permission_remove_operation::calculate_fee( const fee_parameters_type& k )const
 {
    return 0;
@@ -54,5 +66,7 @@ void permission_remove_operation::validate()const
 
 GRAPHENE_IMPLEMENT_EXTERNAL_SERIALIZATION( graphene::protocol::permission_create_operation::fee_parameters_type )
 GRAPHENE_IMPLEMENT_EXTERNAL_SERIALIZATION( graphene::protocol::permission_create_operation )
+GRAPHENE_IMPLEMENT_EXTERNAL_SERIALIZATION( graphene::protocol::permission_create_many_operation::fee_parameters_type )
+GRAPHENE_IMPLEMENT_EXTERNAL_SERIALIZATION( graphene::protocol::permission_create_many_operation )
 GRAPHENE_IMPLEMENT_EXTERNAL_SERIALIZATION( graphene::protocol::permission_remove_operation::fee_parameters_type )
 GRAPHENE_IMPLEMENT_EXTERNAL_SERIALIZATION( graphene::protocol::permission_remove_operation )

@@ -64,6 +64,48 @@ object_id_type permission_create_evaluator::do_apply( const permission_create_op
    return new_perm_object.id;
 } FC_CAPTURE_AND_RETHROW((o)) }
 
+void_result permission_create_many_evaluator::do_evaluate( const permission_create_many_operation& op )
+{ try {
+   database& d = db();
+
+   const auto& perm_idx = d.get_index_type<permission_index>();
+   const auto& perm_op_idx = perm_idx.indices().get<by_subject_account>();
+
+   for( const auto& perm : op.permissions )
+   {
+      FC_ASSERT(!perm.permission_type.empty(), "Permission type can not be empty.");
+      FC_ASSERT(!perm.content_key.empty(), "Content key can not be empty.");
+
+      auto itr = perm_op_idx.lower_bound(boost::make_tuple(op.subject_account, perm.permission_type, perm.object_id, perm.operator_account));
+      FC_ASSERT(itr->subject_account != op.subject_account || itr->permission_type != perm.permission_type
+         || itr->object_id != perm.object_id || itr->operator_account != perm.operator_account, "Permission already exists.");
+   }
+
+   return void_result();
+} FC_CAPTURE_AND_RETHROW( (op) ) }
+
+generic_operation_result permission_create_many_evaluator::do_apply( const permission_create_many_operation& o )
+{ try {
+   database& d = db();
+   generic_operation_result result;
+
+   for( const auto& perm : o.permissions )
+   {
+      const auto& new_perm_object = d.create<permission_object>( [&o, &perm]( permission_object& obj )
+      {
+         obj.subject_account  = o.subject_account;
+         obj.operator_account = perm.operator_account;
+         obj.permission_type  = perm.permission_type;
+         obj.object_id        = perm.object_id;
+         obj.content_key      = perm.content_key;
+         obj.timestamp        = time_point::now().sec_since_epoch();
+      });
+      result.new_objects.insert(new_perm_object.id);
+   }
+
+   return result;
+} FC_CAPTURE_AND_RETHROW((o)) }
+
 void_result permission_remove_evaluator::do_evaluate( const permission_remove_operation& op )
 { try {
    database& d = db();

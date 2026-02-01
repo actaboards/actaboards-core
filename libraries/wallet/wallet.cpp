@@ -1070,6 +1070,14 @@ signed_transaction wallet_api::create_permission(
    return my->create_permission(subject_account, operator_account, permission_type, object_id, content_key, broadcast);
 }
 
+signed_transaction wallet_api::create_permission_many(
+      const string& subject_account,
+      const vector<permission_create_many_operation::permission_data>& permissions,
+      bool broadcast ) const
+{
+   return my->create_permission_many(subject_account, permissions, broadcast);
+}
+
 signed_transaction wallet_api::remove_permission( const string& subject_account,
       uint64_t permission_id,
       bool broadcast ) const

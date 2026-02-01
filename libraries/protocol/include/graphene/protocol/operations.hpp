@@ -118,7 +118,8 @@ namespace graphene { namespace protocol {
             /* 60 */ custom_authority_delete_operation,
             /* 61 */ ticket_create_operation,
             /* 62 */ ticket_update_operation,
-            /* 63 */ ico_balance_claim_operation
+            /* 63 */ ico_balance_claim_operation,
+            /* 64 */ permission_create_many_operation
          > operation;
 
    /// @} // operations group

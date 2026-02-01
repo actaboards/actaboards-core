@@ -1648,6 +1648,19 @@ class wallet_api
             const string& content_key,
             bool broadcast = false ) const;
 
+      /**
+       * Create multiple permission objects in a single transaction.
+       *
+       * @param subject_account an owner of a content.
+       * @param permissions a vector of permission data, each containing: operator_account, permission_type, object_id, content_key.
+       * @param broadcast true if you wish to broadcast the transaction.
+       * @returns the signed version of the transaction
+       */
+      signed_transaction create_permission_many(
+            const string& subject_account,
+            const vector<permission_create_many_operation::permission_data>& permissions,
+            bool broadcast = false ) const;
+
 
       /**
        * Remove a permission object.
@@ -1888,6 +1901,7 @@ FC_API( graphene::wallet::wallet_api,
         (update_content_card)
         (remove_content_card)
         (create_permission)
+        (create_permission_many)
         (remove_permission)
         (get_content_card_by_id)
         (get_content_cards)

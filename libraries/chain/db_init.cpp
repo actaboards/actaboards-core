@@ -142,6 +142,7 @@ void database::initialize_evaluators()
    register_evaluator<content_card_update_evaluator>();
    register_evaluator<content_card_remove_evaluator>();
    register_evaluator<permission_create_evaluator>();
+   register_evaluator<permission_create_many_evaluator>();
    register_evaluator<permission_remove_evaluator>();
    register_evaluator<commit_create_evaluator>();
    register_evaluator<reveal_create_evaluator>();

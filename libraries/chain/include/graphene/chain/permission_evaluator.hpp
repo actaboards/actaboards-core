@@ -37,6 +37,15 @@ public:
    object_id_type do_apply( const permission_create_operation& o ) ;
 };
 
+class permission_create_many_evaluator : public evaluator<permission_create_many_evaluator>
+{
+public:
+   typedef permission_create_many_operation operation_type;
+
+   void_result do_evaluate( const permission_create_many_operation& o );
+   generic_operation_result do_apply( const permission_create_many_operation& o ) ;
+};
+
 class permission_remove_evaluator : public evaluator<permission_remove_evaluator>
 {
 public:
