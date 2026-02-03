@@ -39,6 +39,7 @@
 #include <graphene/custom_operations/custom_operations_plugin.hpp>
 #include <graphene/content_cards/content_cards.hpp>
 #include <graphene/postgres_content/postgres_content_plugin.hpp>
+#include <graphene/postgres_indexer/postgres_indexer_plugin.hpp>
 
 #include <fc/thread/thread.hpp>
 #include <fc/interprocess/signals.hpp>
@@ -126,6 +127,7 @@ int main(int argc, char** argv) {
       node->register_plugin<graphene::custom_operations::custom_operations_plugin>();
       node->register_plugin<graphene::content_cards::content_cards_plugin>();
       node->register_plugin<graphene::postgres_content::postgres_content_plugin>();
+      node->register_plugin<graphene::postgres_indexer::postgres_indexer_plugin>();
 
       // add plugin options to config
       try
@@ -186,6 +188,16 @@ int main(int argc, char** argv) {
          disable_default_logging();
          std::stringstream ss;
          ss << "Plugin conflict: Cannot load both account_history plugin and elasticsearch plugin";
+         my_log( ss.str() );
+         return EXIT_FAILURE;
+      }
+
+      if( plugins.count("postgres_indexer") > 0 &&
+          (plugins.count("account_history") > 0 || plugins.count("elasticsearch") > 0) ) {
+         disable_default_logging();
+         std::stringstream ss;
+         ss << "Plugin conflict: Cannot load postgres_indexer plugin together with "
+               "account_history or elasticsearch plugin";
          my_log( ss.str() );
          return EXIT_FAILURE;
       }

@@ -33,6 +33,7 @@
 #include <graphene/custom_operations/custom_operations_plugin.hpp>
 
 #include <graphene/elasticsearch/elasticsearch_plugin.hpp>
+#include <graphene/postgres_indexer/postgres_indexer_plugin.hpp>
 
 #include <graphene/debug_witness/debug_api.hpp>
 
