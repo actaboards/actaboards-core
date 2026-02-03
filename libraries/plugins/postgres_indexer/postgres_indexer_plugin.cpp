@@ -531,6 +531,16 @@ void postgres_indexer_plugin_impl::flush_bulk_buffer()
    {
       combined += sql + ";\n";
    }
+
+   // Update sync state with current block info
+   if (current_block.block_num > 0) {
+      combined += "UPDATE indexer_sync_state SET last_block_num = "
+         + std::to_string(current_block.block_num)
+         + ", last_block_time = to_timestamp("
+         + std::to_string(current_block.block_time.sec_since_epoch())
+         + "), updated_at = CURRENT_TIMESTAMP WHERE id = 1;\n";
+   }
+
    combined += "COMMIT;";
 
    if (!execute_sql(combined))
