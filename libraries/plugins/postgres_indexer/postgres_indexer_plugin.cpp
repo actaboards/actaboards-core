@@ -969,8 +969,8 @@ void postgres_indexer_plugin_impl::upsert_object<account_object>(const account_o
    std::string obj_id = std::string(obj.id);
    std::string name = obj.name;
    std::string memo_key = std::string(obj.options.memo_key);
-   std::string referrer = std::string(obj.referrer);
-   std::string registrar = std::string(obj.registrar);
+   std::string referrer = std::string(object_id_type(obj.referrer));
+   std::string registrar = std::string(object_id_type(obj.registrar));
 
    if (_keep_only_current) {
       std::string sql = "INSERT INTO indexer_accounts "
@@ -1011,7 +1011,7 @@ void postgres_indexer_plugin_impl::upsert_object<asset_object>(const asset_objec
    std::string data = fc::json::to_string(v, fc::json::legacy_generator);
    std::string obj_id = std::string(obj.id);
    std::string symbol = obj.symbol;
-   std::string issuer = std::string(obj.issuer);
+   std::string issuer = std::string(object_id_type(obj.issuer));
    int precision = obj.precision;
 
    if (_keep_only_current) {
@@ -1049,8 +1049,8 @@ void postgres_indexer_plugin_impl::upsert_object<account_balance_object>(const a
    fc::to_variant(obj, v, GRAPHENE_NET_MAX_NESTED_OBJECTS);
    std::string data = fc::json::to_string(v, fc::json::legacy_generator);
    std::string obj_id = std::string(obj.id);
-   std::string owner = std::string(obj.owner);
-   std::string asset_type = std::string(obj.asset_type);
+   std::string owner = std::string(object_id_type(obj.owner));
+   std::string asset_type = std::string(object_id_type(obj.asset_type));
    int64_t balance = obj.balance.value;
 
    if (_keep_only_current) {
