@@ -372,6 +372,10 @@ bool postgres_indexer_plugin_impl::create_tables()
       CREATE TABLE IF NOT EXISTS indexer_accounts (
          id          BIGSERIAL PRIMARY KEY,
          object_id   VARCHAR(32) NOT NULL,
+         name        VARCHAR(64),
+         memo_key    VARCHAR(128),
+         referrer    VARCHAR(32),
+         registrar   VARCHAR(32),
          data        JSONB NOT NULL,
          block_num   BIGINT NOT NULL,
          block_time  TIMESTAMP NOT NULL,
@@ -379,10 +383,14 @@ bool postgres_indexer_plugin_impl::create_tables()
       );
       CREATE INDEX IF NOT EXISTS idx_acc_block_num ON indexer_accounts(block_num);
       CREATE INDEX IF NOT EXISTS idx_acc_object_id ON indexer_accounts(object_id);
+      CREATE INDEX IF NOT EXISTS idx_acc_name ON indexer_accounts(name);
 
       CREATE TABLE IF NOT EXISTS indexer_assets (
          id          BIGSERIAL PRIMARY KEY,
          object_id   VARCHAR(32) NOT NULL,
+         symbol      VARCHAR(32),
+         issuer      VARCHAR(32),
+         precision   SMALLINT,
          data        JSONB NOT NULL,
          block_num   BIGINT NOT NULL,
          block_time  TIMESTAMP NOT NULL,
@@ -390,10 +398,14 @@ bool postgres_indexer_plugin_impl::create_tables()
       );
       CREATE INDEX IF NOT EXISTS idx_asset_block_num ON indexer_assets(block_num);
       CREATE INDEX IF NOT EXISTS idx_asset_object_id ON indexer_assets(object_id);
+      CREATE INDEX IF NOT EXISTS idx_asset_symbol ON indexer_assets(symbol);
 
       CREATE TABLE IF NOT EXISTS indexer_balances (
          id          BIGSERIAL PRIMARY KEY,
          object_id   VARCHAR(32) NOT NULL,
+         owner       VARCHAR(32),
+         asset_type  VARCHAR(32),
+         balance     BIGINT,
          data        JSONB NOT NULL,
          block_num   BIGINT NOT NULL,
          block_time  TIMESTAMP NOT NULL,
@@ -401,6 +413,8 @@ bool postgres_indexer_plugin_impl::create_tables()
       );
       CREATE INDEX IF NOT EXISTS idx_bal_block_num ON indexer_balances(block_num);
       CREATE INDEX IF NOT EXISTS idx_bal_object_id ON indexer_balances(object_id);
+      CREATE INDEX IF NOT EXISTS idx_bal_owner ON indexer_balances(owner);
+      CREATE INDEX IF NOT EXISTS idx_bal_asset_type ON indexer_balances(asset_type);
 
       CREATE TABLE IF NOT EXISTS indexer_limit_orders (
          id          BIGSERIAL PRIMARY KEY,
@@ -939,6 +953,127 @@ void postgres_indexer_plugin_impl::upsert_object(const T& blockchain_object, con
       std::string sql = "INSERT INTO indexer_" + table_name + " "
          "(object_id, data, block_num, block_time) VALUES ("
          + escape_string(obj_id) + ", "
+         + escape_string(data) + "::jsonb, "
+         + std::to_string(obj_block_number) + ", "
+         "to_timestamp(" + std::to_string(obj_block_time.sec_since_epoch()) + "))";
+      bulk_sql_buffer.push_back(sql);
+   }
+}
+
+template<>
+void postgres_indexer_plugin_impl::upsert_object<account_object>(const account_object& obj, const std::string& table_name)
+{
+   fc::variant v;
+   fc::to_variant(obj, v, GRAPHENE_NET_MAX_NESTED_OBJECTS);
+   std::string data = fc::json::to_string(v, fc::json::legacy_generator);
+   std::string obj_id = std::string(obj.id);
+   std::string name = obj.name;
+   std::string memo_key = std::string(obj.options.memo_key);
+   std::string referrer = std::string(obj.referrer);
+   std::string registrar = std::string(obj.registrar);
+
+   if (_keep_only_current) {
+      std::string sql = "INSERT INTO indexer_accounts "
+         "(object_id, name, memo_key, referrer, registrar, data, block_num, block_time) VALUES ("
+         + escape_string(obj_id) + ", "
+         + escape_string(name) + ", "
+         + escape_string(memo_key) + ", "
+         + escape_string(referrer) + ", "
+         + escape_string(registrar) + ", "
+         + escape_string(data) + "::jsonb, "
+         + std::to_string(obj_block_number) + ", "
+         "to_timestamp(" + std::to_string(obj_block_time.sec_since_epoch()) + ")) "
+         "ON CONFLICT (object_id) DO UPDATE SET "
+         "name = EXCLUDED.name, memo_key = EXCLUDED.memo_key, "
+         "referrer = EXCLUDED.referrer, registrar = EXCLUDED.registrar, "
+         "data = EXCLUDED.data, block_num = EXCLUDED.block_num, block_time = EXCLUDED.block_time";
+      bulk_sql_buffer.push_back(sql);
+   } else {
+      std::string sql = "INSERT INTO indexer_accounts "
+         "(object_id, name, memo_key, referrer, registrar, data, block_num, block_time) VALUES ("
+         + escape_string(obj_id) + ", "
+         + escape_string(name) + ", "
+         + escape_string(memo_key) + ", "
+         + escape_string(referrer) + ", "
+         + escape_string(registrar) + ", "
+         + escape_string(data) + "::jsonb, "
+         + std::to_string(obj_block_number) + ", "
+         "to_timestamp(" + std::to_string(obj_block_time.sec_since_epoch()) + "))";
+      bulk_sql_buffer.push_back(sql);
+   }
+}
+
+template<>
+void postgres_indexer_plugin_impl::upsert_object<asset_object>(const asset_object& obj, const std::string& table_name)
+{
+   fc::variant v;
+   fc::to_variant(obj, v, GRAPHENE_NET_MAX_NESTED_OBJECTS);
+   std::string data = fc::json::to_string(v, fc::json::legacy_generator);
+   std::string obj_id = std::string(obj.id);
+   std::string symbol = obj.symbol;
+   std::string issuer = std::string(obj.issuer);
+   int precision = obj.precision;
+
+   if (_keep_only_current) {
+      std::string sql = "INSERT INTO indexer_assets "
+         "(object_id, symbol, issuer, precision, data, block_num, block_time) VALUES ("
+         + escape_string(obj_id) + ", "
+         + escape_string(symbol) + ", "
+         + escape_string(issuer) + ", "
+         + std::to_string(precision) + ", "
+         + escape_string(data) + "::jsonb, "
+         + std::to_string(obj_block_number) + ", "
+         "to_timestamp(" + std::to_string(obj_block_time.sec_since_epoch()) + ")) "
+         "ON CONFLICT (object_id) DO UPDATE SET "
+         "symbol = EXCLUDED.symbol, issuer = EXCLUDED.issuer, precision = EXCLUDED.precision, "
+         "data = EXCLUDED.data, block_num = EXCLUDED.block_num, block_time = EXCLUDED.block_time";
+      bulk_sql_buffer.push_back(sql);
+   } else {
+      std::string sql = "INSERT INTO indexer_assets "
+         "(object_id, symbol, issuer, precision, data, block_num, block_time) VALUES ("
+         + escape_string(obj_id) + ", "
+         + escape_string(symbol) + ", "
+         + escape_string(issuer) + ", "
+         + std::to_string(precision) + ", "
+         + escape_string(data) + "::jsonb, "
+         + std::to_string(obj_block_number) + ", "
+         "to_timestamp(" + std::to_string(obj_block_time.sec_since_epoch()) + "))";
+      bulk_sql_buffer.push_back(sql);
+   }
+}
+
+template<>
+void postgres_indexer_plugin_impl::upsert_object<account_balance_object>(const account_balance_object& obj, const std::string& table_name)
+{
+   fc::variant v;
+   fc::to_variant(obj, v, GRAPHENE_NET_MAX_NESTED_OBJECTS);
+   std::string data = fc::json::to_string(v, fc::json::legacy_generator);
+   std::string obj_id = std::string(obj.id);
+   std::string owner = std::string(obj.owner);
+   std::string asset_type = std::string(obj.asset_type);
+   int64_t balance = obj.balance.value;
+
+   if (_keep_only_current) {
+      std::string sql = "INSERT INTO indexer_balances "
+         "(object_id, owner, asset_type, balance, data, block_num, block_time) VALUES ("
+         + escape_string(obj_id) + ", "
+         + escape_string(owner) + ", "
+         + escape_string(asset_type) + ", "
+         + std::to_string(balance) + ", "
+         + escape_string(data) + "::jsonb, "
+         + std::to_string(obj_block_number) + ", "
+         "to_timestamp(" + std::to_string(obj_block_time.sec_since_epoch()) + ")) "
+         "ON CONFLICT (object_id) DO UPDATE SET "
+         "owner = EXCLUDED.owner, asset_type = EXCLUDED.asset_type, balance = EXCLUDED.balance, "
+         "data = EXCLUDED.data, block_num = EXCLUDED.block_num, block_time = EXCLUDED.block_time";
+      bulk_sql_buffer.push_back(sql);
+   } else {
+      std::string sql = "INSERT INTO indexer_balances "
+         "(object_id, owner, asset_type, balance, data, block_num, block_time) VALUES ("
+         + escape_string(obj_id) + ", "
+         + escape_string(owner) + ", "
+         + escape_string(asset_type) + ", "
+         + std::to_string(balance) + ", "
          + escape_string(data) + "::jsonb, "
          + std::to_string(obj_block_number) + ", "
          "to_timestamp(" + std::to_string(obj_block_time.sec_since_epoch()) + "))";
