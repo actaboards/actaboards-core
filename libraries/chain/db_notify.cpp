@@ -336,6 +336,27 @@ struct get_impacted_account_visitor
       _impacted.insert( op.fee_payer() );
       _impacted.insert( op.subject_account );
    }
+   void operator()( const room_create_operation& op )
+   {
+      _impacted.insert( op.fee_payer() );
+      _impacted.insert( op.owner );
+   }
+   void operator()( const room_update_operation& op )
+   {
+      _impacted.insert( op.fee_payer() );
+      _impacted.insert( op.owner );
+   }
+   void operator()( const room_add_participant_operation& op )
+   {
+      _impacted.insert( op.fee_payer() );
+      _impacted.insert( op.owner );
+      _impacted.insert( op.participant );
+   }
+   void operator()( const room_remove_participant_operation& op )
+   {
+      _impacted.insert( op.fee_payer() );
+      _impacted.insert( op.owner );
+   }
    void operator()( const commit_create_operation& op )
    {
       _impacted.insert( op.fee_payer() );
