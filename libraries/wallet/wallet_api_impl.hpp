@@ -431,6 +431,40 @@ public:
          uint64_t permission_id,
          unsigned limit = 100 ) const;
 
+   signed_transaction create_room( const string& owner,
+         const string& name,
+         const string& room_key,
+         bool broadcast = false );
+
+   signed_transaction update_room( const string& owner,
+         uint64_t room_id,
+         const string& name,
+         bool broadcast = false );
+
+   signed_transaction add_room_participant( const string& owner,
+         uint64_t room_id,
+         const string& participant,
+         const string& content_key,
+         bool broadcast = false );
+
+   signed_transaction remove_room_participant( const string& owner,
+         uint64_t participant_id,
+         bool broadcast = false );
+
+   room_object get_room_by_id( uint64_t room_id ) const;
+
+   std::vector<room_object> get_rooms_by_owner( const string& owner,
+         uint64_t room_id,
+         unsigned limit = 100 ) const;
+
+   std::vector<room_participant_object> get_room_participants( uint64_t room_id,
+         uint64_t participant_id,
+         unsigned limit = 100 ) const;
+
+   std::vector<room_participant_object> get_rooms_by_participant( const string& participant,
+         uint64_t participant_id,
+         unsigned limit = 100 ) const;
+
    void dbg_make_uia(string creator, string symbol);
 
    void dbg_make_mia(string creator, string symbol);

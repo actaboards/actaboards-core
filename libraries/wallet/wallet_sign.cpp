@@ -761,9 +761,125 @@ namespace graphene { namespace wallet { namespace detail {
                      uint64_t permission_id,
                      unsigned limit ) const
    {
-      auto operator_id = get_account(operator_account).get_id();      
+      auto operator_id = get_account(operator_account).get_id();
       auto permissions = _remote_db->get_permissions(operator_id, permission_id_type(permission_id), limit);
       return permissions;
+   }
+
+   signed_transaction wallet_api_impl::create_room( const string& owner,
+         const string& name,
+         const string& room_key,
+         bool broadcast )
+   { try {
+      auto owner_id = get_account(owner).get_id();
+
+      room_create_operation create_op;
+      create_op.owner = owner_id;
+      create_op.name = name;
+      create_op.room_key = room_key;
+
+      signed_transaction tx;
+      tx.operations.push_back(create_op);
+      set_operation_fees(tx, _remote_db->get_global_properties().parameters.get_current_fees());
+      tx.validate();
+
+      return sign_transaction(tx, broadcast);
+   } FC_CAPTURE_AND_RETHROW( (owner)(name)(room_key)(broadcast) ) }
+
+   signed_transaction wallet_api_impl::update_room( const string& owner,
+         uint64_t room_id,
+         const string& name,
+         bool broadcast )
+   { try {
+      auto owner_id = get_account(owner).get_id();
+
+      room_update_operation update_op;
+      update_op.owner = owner_id;
+      update_op.room = room_id_type(room_id);
+      update_op.name = name;
+
+      signed_transaction tx;
+      tx.operations.push_back(update_op);
+      set_operation_fees(tx, _remote_db->get_global_properties().parameters.get_current_fees());
+      tx.validate();
+
+      return sign_transaction(tx, broadcast);
+   } FC_CAPTURE_AND_RETHROW( (owner)(room_id)(name)(broadcast) ) }
+
+   signed_transaction wallet_api_impl::add_room_participant( const string& owner,
+         uint64_t room_id,
+         const string& participant,
+         const string& content_key,
+         bool broadcast )
+   { try {
+      auto owner_id = get_account(owner).get_id();
+      auto participant_id = get_account(participant).get_id();
+
+      room_add_participant_operation add_op;
+      add_op.owner = owner_id;
+      add_op.room = room_id_type(room_id);
+      add_op.participant = participant_id;
+      add_op.content_key = content_key;
+
+      signed_transaction tx;
+      tx.operations.push_back(add_op);
+      set_operation_fees(tx, _remote_db->get_global_properties().parameters.get_current_fees());
+      tx.validate();
+
+      return sign_transaction(tx, broadcast);
+   } FC_CAPTURE_AND_RETHROW( (owner)(room_id)(participant)(content_key)(broadcast) ) }
+
+   signed_transaction wallet_api_impl::remove_room_participant( const string& owner,
+         uint64_t participant_id,
+         bool broadcast )
+   { try {
+      auto owner_id = get_account(owner).get_id();
+
+      room_remove_participant_operation remove_op;
+      remove_op.owner = owner_id;
+      remove_op.participant_id = room_participant_id_type(participant_id);
+
+      signed_transaction tx;
+      tx.operations.push_back(remove_op);
+      set_operation_fees(tx, _remote_db->get_global_properties().parameters.get_current_fees());
+      tx.validate();
+
+      return sign_transaction(tx, broadcast);
+   } FC_CAPTURE_AND_RETHROW( (owner)(participant_id)(broadcast) ) }
+
+   room_object wallet_api_impl::get_room_by_id( uint64_t room_id ) const
+   {
+      auto room = _remote_db->get_room_by_id(room_id_type(room_id));
+      if (room.valid()) {
+         return *room;
+      }
+      return room_object();
+   }
+
+   std::vector<room_object> wallet_api_impl::get_rooms_by_owner( const string& owner,
+         uint64_t room_id,
+         unsigned limit ) const
+   {
+      auto owner_id = get_account(owner).get_id();
+      auto rooms = _remote_db->get_rooms_by_owner(owner_id, room_id_type(room_id), limit);
+      return rooms;
+   }
+
+   std::vector<room_participant_object> wallet_api_impl::get_room_participants( uint64_t room_id,
+         uint64_t participant_id,
+         unsigned limit ) const
+   {
+      auto participants = _remote_db->get_room_participants(room_id_type(room_id), room_participant_id_type(participant_id), limit);
+      return participants;
+   }
+
+   std::vector<room_participant_object> wallet_api_impl::get_rooms_by_participant( const string& participant,
+         uint64_t participant_id,
+         unsigned limit ) const
+   {
+      auto account_id = get_account(participant).get_id();
+      auto rooms = _remote_db->get_rooms_by_participant(account_id, room_participant_id_type(participant_id), limit);
+      return rooms;
    }
 
 }}} // namespace graphene::wallet::detail

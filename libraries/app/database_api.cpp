@@ -2666,6 +2666,105 @@ vector<permission_object> database_api_impl::get_permissions( const account_id_t
 
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
+// Rooms                                                            //
+//                                                                  //
+//////////////////////////////////////////////////////////////////////
+
+fc::optional<room_object> database_api::get_room_by_id( const room_id_type room_id ) const
+{
+   return my->get_room_by_id(room_id);
+}
+
+fc::optional<room_object> database_api_impl::get_room_by_id( const room_id_type room_id ) const
+{
+   const auto& room_idx = _db.get_index_type<room_index>();
+   const auto& by_id_idx = room_idx.indices().get<by_id>();
+   auto itr = by_id_idx.find(room_id);
+
+   if ( itr == by_id_idx.end() ){
+      return fc::optional<room_object>();
+   }
+   return *itr;
+}
+
+vector<room_object> database_api::get_rooms_by_owner( const account_id_type owner,
+                                                      const room_id_type room_id, uint32_t limit ) const
+{
+   return my->get_rooms_by_owner(owner, room_id, limit);
+}
+
+vector<room_object> database_api_impl::get_rooms_by_owner( const account_id_type owner,
+                                                           const room_id_type room_id, uint32_t limit ) const
+{
+   const auto& room_idx = _db.get_index_type<room_index>();
+   const auto& by_owner_idx = room_idx.indices().get<by_owner>();
+   auto itr = by_owner_idx.lower_bound(owner);
+
+   vector<room_object> result;
+   while( itr != by_owner_idx.end() && itr->owner == owner && limit-- )
+   {
+      if( itr->id >= room_id )
+         result.push_back(*itr);
+      ++itr;
+   }
+
+   return result;
+}
+
+vector<room_participant_object> database_api::get_room_participants( const room_id_type room,
+                                                                     const room_participant_id_type participant_id,
+                                                                     uint32_t limit ) const
+{
+   return my->get_room_participants(room, participant_id, limit);
+}
+
+vector<room_participant_object> database_api_impl::get_room_participants( const room_id_type room,
+                                                                          const room_participant_id_type participant_id,
+                                                                          uint32_t limit ) const
+{
+   const auto& participant_idx = _db.get_index_type<room_participant_index>();
+   const auto& by_room_idx = participant_idx.indices().get<by_room>();
+   auto itr = by_room_idx.lower_bound(room);
+
+   vector<room_participant_object> result;
+   while( itr != by_room_idx.end() && itr->room == room && limit-- )
+   {
+      if( itr->id >= participant_id )
+         result.push_back(*itr);
+      ++itr;
+   }
+
+   return result;
+}
+
+vector<room_participant_object> database_api::get_rooms_by_participant( const account_id_type participant,
+                                                                        const room_participant_id_type participant_id,
+                                                                        uint32_t limit ) const
+{
+   return my->get_rooms_by_participant(participant, participant_id, limit);
+}
+
+vector<room_participant_object> database_api_impl::get_rooms_by_participant( const account_id_type participant,
+                                                                             const room_participant_id_type participant_id,
+                                                                             uint32_t limit ) const
+{
+   const auto& participant_idx = _db.get_index_type<room_participant_index>();
+   const auto& by_part_idx = participant_idx.indices().get<by_participant>();
+   auto itr = by_part_idx.lower_bound(participant);
+
+   vector<room_participant_object> result;
+   while( itr != by_part_idx.end() && itr->participant == participant && limit-- )
+   {
+      if( itr->id >= participant_id )
+         result.push_back(*itr);
+      ++itr;
+   }
+
+   return result;
+}
+
+//////////////////////////////////////////////////////////////////////
+//                                                                  //
 // Private methods                                                  //
 //                                                                  //
 //////////////////////////////////////////////////////////////////////

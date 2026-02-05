@@ -24,6 +24,7 @@
 
 #include <graphene/chain/content_card_evaluator.hpp>
 #include <graphene/chain/permission_object.hpp>
+#include <graphene/chain/room_object.hpp>
 #include <graphene/chain/buyback.hpp>
 #include <graphene/chain/database.hpp>
 #include <graphene/chain/exceptions.hpp>
@@ -47,6 +48,14 @@ void_result content_card_create_evaluator::do_evaluate( const content_card_creat
    auto itr = content_op_idx.lower_bound(boost::make_tuple(op.subject_account, op.hash));
    FC_ASSERT(itr->subject_account != op.subject_account || itr->hash != op.hash, "Content card already exists.");
 
+   // Check room membership if room is specified
+   if(op.room.valid()) {
+      const auto& participant_idx = d.get_index_type<room_participant_index>();
+      const auto& by_room_part = participant_idx.indices().get<by_room_and_participant>();
+      auto part_itr = by_room_part.find(boost::make_tuple(*op.room, op.subject_account));
+      FC_ASSERT(part_itr != by_room_part.end(), "Only room participants can create content cards in this room.");
+   }
+
    return void_result();
 } FC_CAPTURE_AND_RETHROW( (op) ) }
 
@@ -60,6 +69,7 @@ object_id_type content_card_create_evaluator::do_apply( const content_card_creat
    {
          obj.subject_account = o.subject_account;
          obj.hash            = o.hash;
+         obj.room            = o.room;
 
          if (use_full_content_card) {
             obj.url             = o.url;
@@ -87,6 +97,14 @@ void_result content_card_update_evaluator::do_evaluate( const content_card_updat
    auto itr = content_op_idx.lower_bound(boost::make_tuple(op.subject_account, op.hash));
    FC_ASSERT(itr->subject_account == op.subject_account && itr->hash == op.hash, "Content card does not exists.");
 
+   // Check room membership if room is specified
+   if(op.room.valid()) {
+      const auto& participant_idx = d.get_index_type<room_participant_index>();
+      const auto& by_room_part = participant_idx.indices().get<by_room_and_participant>();
+      auto part_itr = by_room_part.find(boost::make_tuple(*op.room, op.subject_account));
+      FC_ASSERT(part_itr != by_room_part.end(), "Only room participants can update content cards in this room.");
+   }
+
    return void_result();
 } FC_CAPTURE_AND_RETHROW( (op) ) }
 
@@ -108,6 +126,7 @@ object_id_type content_card_update_evaluator::do_apply( const content_card_updat
          obj.content_key     = o.content_key;
          obj.timestamp       = time_point::now().sec_since_epoch();
          obj.storage_data    = o.storage_data;
+         obj.room            = o.room;
    });
 
    return itr->id;

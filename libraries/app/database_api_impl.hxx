@@ -210,6 +210,17 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       vector<permission_object> get_permissions( const account_id_type operator_account,
                                                  const permission_id_type permission_id, uint32_t limit ) const;
 
+      // Rooms
+      fc::optional<room_object> get_room_by_id( const room_id_type room_id ) const;
+      vector<room_object> get_rooms_by_owner( const account_id_type owner,
+                                              const room_id_type room_id, uint32_t limit ) const;
+      vector<room_participant_object> get_room_participants( const room_id_type room,
+                                                             const room_participant_id_type participant_id,
+                                                             uint32_t limit ) const;
+      vector<room_participant_object> get_rooms_by_participant( const account_id_type participant,
+                                                                const room_participant_id_type participant_id,
+                                                                uint32_t limit ) const;
+
       ////////////////////////////////////////////////
       // Accounts
       ////////////////////////////////////////////////

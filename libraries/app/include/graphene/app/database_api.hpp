@@ -42,6 +42,7 @@
 #include <graphene/chain/content_card_object.hpp>
 #include <graphene/chain/permission_object.hpp>
 #include <graphene/chain/commit_reveal_object.hpp>
+#include <graphene/chain/room_object.hpp>
 #include <graphene/chain/witness_schedule_object.hpp>
 
 #include <fc/api.hpp>
@@ -921,6 +922,49 @@ class database_api
       vector<permission_object> get_permissions( const account_id_type operator_account,
                                                  const permission_id_type permission_id, uint32_t limit ) const;
 
+      ///////////
+      // Rooms //
+      ///////////
+
+      /**
+       * @brief Get room by id
+       * @param room_id The id of the room
+       * @return The room object
+       */
+      fc::optional<room_object> get_room_by_id( const room_id_type room_id ) const;
+
+      /**
+       * @brief Get list of rooms owned by an account
+       * @param owner The owner account of the rooms
+       * @param room_id Lower bound of room id to start getting results
+       * @param limit Maximum number of room objects to fetch
+       * @return The list of room objects
+       */
+      vector<room_object> get_rooms_by_owner( const account_id_type owner,
+                                              const room_id_type room_id, uint32_t limit ) const;
+
+      /**
+       * @brief Get list of participants in a room
+       * @param room The room to get participants from
+       * @param participant_id Lower bound of participant id to start getting results
+       * @param limit Maximum number of participant objects to fetch
+       * @return The list of room participant objects
+       */
+      vector<room_participant_object> get_room_participants( const room_id_type room,
+                                                             const room_participant_id_type participant_id,
+                                                             uint32_t limit ) const;
+
+      /**
+       * @brief Get list of rooms a user is a participant of
+       * @param participant The participant account
+       * @param participant_id Lower bound of participant object id to start getting results
+       * @param limit Maximum number of participant objects to fetch
+       * @return The list of room participant objects
+       */
+      vector<room_participant_object> get_rooms_by_participant( const account_id_type participant,
+                                                                const room_participant_id_type participant_id,
+                                                                uint32_t limit ) const;
+
       //////////
       // HTLC //
       //////////
@@ -1093,6 +1137,12 @@ FC_API(graphene::app::database_api,
    (get_content_cards)
    (get_permission_by_id)
    (get_permissions)
+
+   // Rooms
+   (get_room_by_id)
+   (get_rooms_by_owner)
+   (get_room_participants)
+   (get_rooms_by_participant)
 
    // HTLC
    (get_htlc)

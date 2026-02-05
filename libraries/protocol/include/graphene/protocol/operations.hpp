@@ -46,6 +46,7 @@
 #include <graphene/protocol/content_card.hpp>
 #include <graphene/protocol/permission.hpp>
 #include <graphene/protocol/commit_reveal.hpp>
+#include <graphene/protocol/room.hpp>
 
 namespace graphene { namespace protocol {
 
@@ -119,7 +120,11 @@ namespace graphene { namespace protocol {
             /* 61 */ ticket_create_operation,
             /* 62 */ ticket_update_operation,
             /* 63 */ ico_balance_claim_operation,
-            /* 64 */ permission_create_many_operation
+            /* 64 */ permission_create_many_operation,
+            /* 65 */ room_create_operation,
+            /* 66 */ room_update_operation,
+            /* 67 */ room_add_participant_operation,
+            /* 68 */ room_remove_participant_operation
          > operation;
 
    /// @} // operations group

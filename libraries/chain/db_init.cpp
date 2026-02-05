@@ -55,6 +55,7 @@
 #include <graphene/chain/content_card_object.hpp>
 #include <graphene/chain/permission_object.hpp>
 #include <graphene/chain/commit_reveal_object.hpp>
+#include <graphene/chain/room_object.hpp>
 
 #include <graphene/chain/account_evaluator.hpp>
 #include <graphene/chain/asset_evaluator.hpp>
@@ -77,6 +78,7 @@
 #include <graphene/chain/content_card_evaluator.hpp>
 #include <graphene/chain/permission_evaluator.hpp>
 #include <graphene/chain/commit_reveal_evaluator.hpp>
+#include <graphene/chain/room_evaluator.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -146,6 +148,10 @@ void database::initialize_evaluators()
    register_evaluator<permission_remove_evaluator>();
    register_evaluator<commit_create_evaluator>();
    register_evaluator<reveal_create_evaluator>();
+   register_evaluator<room_create_evaluator>();
+   register_evaluator<room_update_evaluator>();
+   register_evaluator<room_add_participant_evaluator>();
+   register_evaluator<room_remove_participant_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -195,6 +201,8 @@ void database::initialize_indexes()
    add_index< primary_index< content_card_index,                        20> >();
    add_index< primary_index< permission_index,                          20> >();
    add_index< primary_index< commit_reveal_index,                       20> >();
+   add_index< primary_index< room_index,                                20> >();
+   add_index< primary_index< room_participant_index,                    20> >();
 }
 
 void database::init_genesis(const genesis_state_type& genesis_state)

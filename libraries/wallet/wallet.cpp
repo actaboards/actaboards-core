@@ -1111,6 +1111,71 @@ std::vector<permission_object> wallet_api::get_permissions(
    return my->get_permissions(operator_account, permission_id, limit);
 }
 
+signed_transaction wallet_api::create_room(
+      const string& owner,
+      const string& name,
+      const string& room_key,
+      bool broadcast ) const
+{
+   return my->create_room(owner, name, room_key, broadcast);
+}
+
+signed_transaction wallet_api::update_room(
+      const string& owner,
+      uint64_t room_id,
+      const string& name,
+      bool broadcast ) const
+{
+   return my->update_room(owner, room_id, name, broadcast);
+}
+
+signed_transaction wallet_api::add_room_participant(
+      const string& owner,
+      uint64_t room_id,
+      const string& participant,
+      const string& content_key,
+      bool broadcast ) const
+{
+   return my->add_room_participant(owner, room_id, participant, content_key, broadcast);
+}
+
+signed_transaction wallet_api::remove_room_participant(
+      const string& owner,
+      uint64_t participant_id,
+      bool broadcast ) const
+{
+   return my->remove_room_participant(owner, participant_id, broadcast);
+}
+
+room_object wallet_api::get_room_by_id( uint64_t room_id ) const
+{
+   return my->get_room_by_id(room_id);
+}
+
+std::vector<room_object> wallet_api::get_rooms_by_owner(
+      const string& owner,
+      uint64_t room_id,
+      unsigned limit ) const
+{
+   return my->get_rooms_by_owner(owner, room_id, limit);
+}
+
+std::vector<room_participant_object> wallet_api::get_room_participants(
+      uint64_t room_id,
+      uint64_t participant_id,
+      unsigned limit ) const
+{
+   return my->get_room_participants(room_id, participant_id, limit);
+}
+
+std::vector<room_participant_object> wallet_api::get_rooms_by_participant(
+      const string& participant,
+      uint64_t participant_id,
+      unsigned limit ) const
+{
+   return my->get_rooms_by_participant(participant, participant_id, limit);
+}
+
 string wallet_api::help()const
 {
    std::vector<std::string> method_names = my->method_documentation.get_method_names();

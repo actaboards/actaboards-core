@@ -1704,7 +1704,7 @@ class wallet_api
 
       /**
        * Returns a list of permission objects for choosen account
-       * 
+       *
        * @param operator_account - a content owner account.
        * @param permission_id a data will be received from this id.
        * @param limit depth of the permission objects to retrieve
@@ -1712,6 +1712,111 @@ class wallet_api
        */
       std::vector<permission_object> get_permissions( const string& operator_account,
             uint64_t permission_id,
+            unsigned limit = 100 ) const;
+
+      /**
+       * Create a room (encrypted thread).
+       *
+       * @param owner the account that will own the room.
+       * @param name the name of the room (max 256 characters).
+       * @param room_key the encrypted room key for the owner.
+       * @param broadcast true if you wish to broadcast the transaction.
+       * @returns the signed version of the transaction
+       */
+      signed_transaction create_room(
+            const string& owner,
+            const string& name,
+            const string& room_key,
+            bool broadcast = false ) const;
+
+      /**
+       * Update a room name.
+       *
+       * @param owner the account that owns the room.
+       * @param room_id the id of the room to update.
+       * @param name the new name of the room.
+       * @param broadcast true if you wish to broadcast the transaction.
+       * @returns the signed version of the transaction
+       */
+      signed_transaction update_room(
+            const string& owner,
+            uint64_t room_id,
+            const string& name,
+            bool broadcast = false ) const;
+
+      /**
+       * Add a participant to a room.
+       *
+       * @param owner the account that owns the room.
+       * @param room_id the id of the room.
+       * @param participant the account to add to the room.
+       * @param content_key the room key encrypted for the participant.
+       * @param broadcast true if you wish to broadcast the transaction.
+       * @returns the signed version of the transaction
+       */
+      signed_transaction add_room_participant(
+            const string& owner,
+            uint64_t room_id,
+            const string& participant,
+            const string& content_key,
+            bool broadcast = false ) const;
+
+      /**
+       * Remove a participant from a room.
+       *
+       * @param owner the account that owns the room.
+       * @param participant_id the id of the room_participant object to remove.
+       * @param broadcast true if you wish to broadcast the transaction.
+       * @returns the signed version of the transaction
+       */
+      signed_transaction remove_room_participant(
+            const string& owner,
+            uint64_t participant_id,
+            bool broadcast = false ) const;
+
+      /**
+       * Returns a room object by id.
+       *
+       * @param room_id an id of the room.
+       * @returns the room object.
+       */
+      room_object get_room_by_id( uint64_t room_id ) const;
+
+      /**
+       * Returns a list of rooms owned by an account.
+       *
+       * @param owner the owner account.
+       * @param room_id lower bound of room id to start getting results.
+       * @param limit maximum number of rooms to retrieve.
+       * @returns the list of room objects.
+       */
+      std::vector<room_object> get_rooms_by_owner( const string& owner,
+            uint64_t room_id,
+            unsigned limit = 100 ) const;
+
+      /**
+       * Returns a list of participants in a room.
+       *
+       * @param room_id the id of the room.
+       * @param participant_id lower bound of participant id to start getting results.
+       * @param limit maximum number of participants to retrieve.
+       * @returns the list of room participant objects.
+       */
+      std::vector<room_participant_object> get_room_participants(
+            uint64_t room_id,
+            uint64_t participant_id,
+            unsigned limit = 100 ) const;
+
+      /**
+       * Returns a list of rooms a user is a participant of.
+       *
+       * @param participant the participant account.
+       * @param participant_id lower bound of participant object id to start getting results.
+       * @param limit maximum number of participant objects to retrieve.
+       * @returns the list of room participant objects.
+       */
+      std::vector<room_participant_object> get_rooms_by_participant( const string& participant,
+            uint64_t participant_id,
             unsigned limit = 100 ) const;
 
       void dbg_make_uia(string creator, string symbol);
@@ -1907,4 +2012,12 @@ FC_API( graphene::wallet::wallet_api,
         (get_content_cards)
         (get_permission_by_id)
         (get_permissions)
+        (create_room)
+        (update_room)
+        (add_room_participant)
+        (remove_room_participant)
+        (get_room_by_id)
+        (get_rooms_by_owner)
+        (get_room_participants)
+        (get_rooms_by_participant)
       )

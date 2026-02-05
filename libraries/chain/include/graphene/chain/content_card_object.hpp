@@ -55,6 +55,7 @@ namespace graphene { namespace chain {
             string   description;
             string   content_key;
             string   storage_data;
+            optional<room_id_type> room;  // Optional room for encrypted threads
         };
 
         struct by_subject_account;

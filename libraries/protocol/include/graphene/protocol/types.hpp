@@ -349,6 +349,8 @@ GRAPHENE_DEFINE_IDS(protocol, protocol_ids, /*protocol objects are not prefixed*
                     /* 1.21.x */ (permission)
                     /* 1.22.x */ (commit_reveal)
                     /* 1.23.x */ (ico_balance)
+                    /* 1.24.x */ (room)
+                    /* 1.25.x */ (room_participant)
                    )
 
 FC_REFLECT(graphene::protocol::public_key_type, (key_data))

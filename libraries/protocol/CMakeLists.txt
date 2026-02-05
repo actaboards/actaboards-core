@@ -36,7 +36,8 @@ list(APPEND SOURCES account.cpp
                     content_card.cpp
                     permission.cpp
                     commit_reveal.cpp
-                    htlc.cpp)
+                    htlc.cpp
+                    room.cpp)
 
 
 list(APPEND CUSTOM_AUTHS_FILES

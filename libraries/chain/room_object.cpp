@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2020-2023 Revolution Populi Limited, and contributors.
- * 
+ * Copyright (c) 2024 ActaBoards contributors.
+ *
  * The MIT License
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,7 +23,7 @@
  * THE SOFTWARE.
  */
 
-#include <graphene/chain/content_card_object.hpp>
+#include <graphene/chain/room_object.hpp>
 #include <graphene/chain/database.hpp>
 
 #include <fc/io/raw.hpp>
@@ -32,9 +33,15 @@ namespace graphene { namespace chain {
 
 } } // graphene::chain
 
-FC_REFLECT_DERIVED_NO_TYPENAME( graphene::chain::content_card_object,
+FC_REFLECT_DERIVED_NO_TYPENAME( graphene::chain::room_object,
                     (graphene::db::object),
-                    (subject_account)(hash)(url)(timestamp)(type)(description)(content_key)(storage_data)(room)
+                    (owner)(name)(room_key)(timestamp)
                     )
 
-GRAPHENE_IMPLEMENT_EXTERNAL_SERIALIZATION( graphene::chain::content_card_object )
+FC_REFLECT_DERIVED_NO_TYPENAME( graphene::chain::room_participant_object,
+                    (graphene::db::object),
+                    (room)(participant)(content_key)(timestamp)
+                    )
+
+GRAPHENE_IMPLEMENT_EXTERNAL_SERIALIZATION( graphene::chain::room_object )
+GRAPHENE_IMPLEMENT_EXTERNAL_SERIALIZATION( graphene::chain::room_participant_object )
