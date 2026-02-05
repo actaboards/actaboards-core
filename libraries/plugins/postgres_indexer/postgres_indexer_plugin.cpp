@@ -17,6 +17,7 @@
 #include <graphene/protocol/content_card.hpp>
 #include <graphene/protocol/permission.hpp>
 
+#include <fc/io/json.hpp>
 #include <libpq-fe.h>
 
 namespace graphene { namespace postgres_indexer {
@@ -449,6 +450,8 @@ bool postgres_indexer_plugin_impl::create_tables()
          description         TEXT,
          content_key         TEXT,
          storage_data        TEXT,
+         file_name           TEXT,
+         file_size           BIGINT,
          block_num           BIGINT NOT NULL,
          block_time          TIMESTAMP NOT NULL,
          trx_id              VARCHAR(64),
@@ -462,6 +465,8 @@ bool postgres_indexer_plugin_impl::create_tables()
       CREATE INDEX IF NOT EXISTS idx_cc_block_time ON indexer_content_cards(block_time DESC);
       CREATE INDEX IF NOT EXISTS idx_cc_type ON indexer_content_cards(type);
       CREATE INDEX IF NOT EXISTS idx_cc_is_removed ON indexer_content_cards(is_removed);
+      CREATE INDEX IF NOT EXISTS idx_cc_file_name ON indexer_content_cards(file_name);
+      CREATE INDEX IF NOT EXISTS idx_cc_file_size ON indexer_content_cards(file_size);
 
       CREATE TABLE IF NOT EXISTS indexer_permissions (
          id                  SERIAL PRIMARY KEY,
@@ -1296,9 +1301,22 @@ void postgres_indexer_plugin_impl::handle_content_card_create(
    std::string subject_account = std::string(object_id_type(op.subject_account));
    std::string content_card_id = object_id.empty() ? ("pending-" + trx_id) : object_id;
 
+   std::string file_name_val = "NULL";
+   std::string file_size_val = "NULL";
+   try {
+      fc::variant v = fc::json::from_string(op.storage_data);
+      if (v.is_object()) {
+         fc::variant_object obj = v.get_object();
+         if (obj.contains("file_name"))
+            file_name_val = escape_string(obj["file_name"].as_string());
+         if (obj.contains("file_size"))
+            file_size_val = std::to_string(obj["file_size"].as_uint64());
+      }
+   } catch (...) {}
+
    std::string sql = "INSERT INTO indexer_content_cards "
       "(content_card_id, subject_account, hash, url, type, description, content_key, storage_data, "
-      "block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
+      "file_name, file_size, block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
       + escape_string(content_card_id) + ", "
       + escape_string(subject_account) + ", "
       + escape_string(op.hash) + ", "
@@ -1307,6 +1325,8 @@ void postgres_indexer_plugin_impl::handle_content_card_create(
       + escape_string(op.description) + ", "
       + escape_string(op.content_key) + ", "
       + escape_string(op.storage_data) + ", "
+      + file_name_val + ", "
+      + file_size_val + ", "
       + std::to_string(block_num) + ", "
       "to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
       + escape_string(trx_id) + ", "
@@ -1314,7 +1334,8 @@ void postgres_indexer_plugin_impl::handle_content_card_create(
       "ON CONFLICT (content_card_id) DO UPDATE SET "
       "hash = EXCLUDED.hash, url = EXCLUDED.url, type = EXCLUDED.type, "
       "description = EXCLUDED.description, content_key = EXCLUDED.content_key, "
-      "storage_data = EXCLUDED.storage_data";
+      "storage_data = EXCLUDED.storage_data, file_name = EXCLUDED.file_name, "
+      "file_size = EXCLUDED.file_size";
 
    if (!execute_sql(sql)) {
       elog("Failed to insert content_card_create: block ${b}", ("b", block_num));
@@ -1329,9 +1350,22 @@ void postgres_indexer_plugin_impl::handle_content_card_update(
    std::string subject_account = std::string(object_id_type(op.subject_account));
    std::string content_card_id = object_id.empty() ? ("pending-" + trx_id) : object_id;
 
+   std::string file_name_val = "NULL";
+   std::string file_size_val = "NULL";
+   try {
+      fc::variant v = fc::json::from_string(op.storage_data);
+      if (v.is_object()) {
+         fc::variant_object obj = v.get_object();
+         if (obj.contains("file_name"))
+            file_name_val = escape_string(obj["file_name"].as_string());
+         if (obj.contains("file_size"))
+            file_size_val = std::to_string(obj["file_size"].as_uint64());
+      }
+   } catch (...) {}
+
    std::string sql = "INSERT INTO indexer_content_cards "
       "(content_card_id, subject_account, hash, url, type, description, content_key, storage_data, "
-      "block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
+      "file_name, file_size, block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
       + escape_string(content_card_id) + ", "
       + escape_string(subject_account) + ", "
       + escape_string(op.hash) + ", "
@@ -1340,6 +1374,8 @@ void postgres_indexer_plugin_impl::handle_content_card_update(
       + escape_string(op.description) + ", "
       + escape_string(op.content_key) + ", "
       + escape_string(op.storage_data) + ", "
+      + file_name_val + ", "
+      + file_size_val + ", "
       + std::to_string(block_num) + ", "
       "to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
       + escape_string(trx_id) + ", "
@@ -1347,7 +1383,8 @@ void postgres_indexer_plugin_impl::handle_content_card_update(
       "ON CONFLICT (content_card_id) DO UPDATE SET "
       "hash = EXCLUDED.hash, url = EXCLUDED.url, type = EXCLUDED.type, "
       "description = EXCLUDED.description, content_key = EXCLUDED.content_key, "
-      "storage_data = EXCLUDED.storage_data, block_num = EXCLUDED.block_num, "
+      "storage_data = EXCLUDED.storage_data, file_name = EXCLUDED.file_name, "
+      "file_size = EXCLUDED.file_size, block_num = EXCLUDED.block_num, "
       "block_time = EXCLUDED.block_time, operation_type = 42";
 
    if (!execute_sql(sql)) {
