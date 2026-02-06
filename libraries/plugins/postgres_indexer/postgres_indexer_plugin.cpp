@@ -16,6 +16,7 @@
 #include <graphene/chain/account_object.hpp>
 #include <graphene/protocol/content_card.hpp>
 #include <graphene/protocol/permission.hpp>
+#include <graphene/protocol/room.hpp>
 
 #include <fc/io/json.hpp>
 #include <libpq-fe.h>
@@ -153,6 +154,18 @@ class postgres_indexer_plugin_impl
       void handle_permission_remove(const permission_remove_operation& op,
                                      uint32_t block_num, fc::time_point_sec block_time,
                                      const std::string& trx_id);
+      void handle_room_create(const room_create_operation& op,
+                               uint32_t block_num, fc::time_point_sec block_time,
+                               const std::string& trx_id, const std::string& object_id);
+      void handle_room_update(const room_update_operation& op,
+                               uint32_t block_num, fc::time_point_sec block_time,
+                               const std::string& trx_id);
+      void handle_room_add_participant(const room_add_participant_operation& op,
+                                        uint32_t block_num, fc::time_point_sec block_time,
+                                        const std::string& trx_id, const std::string& object_id);
+      void handle_room_remove_participant(const room_remove_participant_operation& op,
+                                           uint32_t block_num, fc::time_point_sec block_time,
+                                           const std::string& trx_id);
 
       // --- Query API ---
       operation_history_object pg_get_operation_by_id(operation_history_id_type id);
@@ -452,6 +465,7 @@ bool postgres_indexer_plugin_impl::create_tables()
          storage_data        TEXT,
          file_name           TEXT,
          file_size           BIGINT,
+         room_id             VARCHAR(32),
          block_num           BIGINT NOT NULL,
          block_time          TIMESTAMP NOT NULL,
          trx_id              VARCHAR(64),
@@ -467,6 +481,7 @@ bool postgres_indexer_plugin_impl::create_tables()
       CREATE INDEX IF NOT EXISTS idx_cc_is_removed ON indexer_content_cards(is_removed);
       CREATE INDEX IF NOT EXISTS idx_cc_file_name ON indexer_content_cards(file_name);
       CREATE INDEX IF NOT EXISTS idx_cc_file_size ON indexer_content_cards(file_size);
+      CREATE INDEX IF NOT EXISTS idx_cc_room ON indexer_content_cards(room_id);
 
       CREATE TABLE IF NOT EXISTS indexer_permissions (
          id                  SERIAL PRIMARY KEY,
@@ -490,6 +505,46 @@ bool postgres_indexer_plugin_impl::create_tables()
       CREATE INDEX IF NOT EXISTS idx_perm_object ON indexer_permissions(object_id);
       CREATE INDEX IF NOT EXISTS idx_perm_block_time ON indexer_permissions(block_time DESC);
       CREATE INDEX IF NOT EXISTS idx_perm_is_removed ON indexer_permissions(is_removed);
+
+      -- Rooms (encrypted threads)
+      CREATE TABLE IF NOT EXISTS indexer_rooms (
+         id                  SERIAL PRIMARY KEY,
+         room_id             VARCHAR(32) NOT NULL,
+         owner               VARCHAR(32) NOT NULL,
+         name                VARCHAR(256),
+         room_key            TEXT,
+         block_num           BIGINT NOT NULL,
+         block_time          TIMESTAMP NOT NULL,
+         trx_id              VARCHAR(64),
+         operation_type      SMALLINT NOT NULL,
+         created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+         UNIQUE(room_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_room_owner ON indexer_rooms(owner);
+      CREATE INDEX IF NOT EXISTS idx_room_block_time ON indexer_rooms(block_time DESC);
+      CREATE INDEX IF NOT EXISTS idx_room_name ON indexer_rooms(name);
+
+      -- Room participants
+      CREATE TABLE IF NOT EXISTS indexer_room_participants (
+         id                  SERIAL PRIMARY KEY,
+         participant_id      VARCHAR(32) NOT NULL,
+         room_id             VARCHAR(32) NOT NULL,
+         participant         VARCHAR(32) NOT NULL,
+         content_key         TEXT,
+         block_num           BIGINT NOT NULL,
+         block_time          TIMESTAMP NOT NULL,
+         trx_id              VARCHAR(64),
+         operation_type      SMALLINT NOT NULL,
+         is_removed          BOOLEAN DEFAULT FALSE,
+         created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+         UNIQUE(participant_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_rp_room ON indexer_room_participants(room_id);
+      CREATE INDEX IF NOT EXISTS idx_rp_participant ON indexer_room_participants(participant);
+      CREATE INDEX IF NOT EXISTS idx_rp_block_time ON indexer_room_participants(block_time DESC);
+      CREATE INDEX IF NOT EXISTS idx_rp_is_removed ON indexer_room_participants(is_removed);
 
       -- Sync state bookkeeping
       CREATE TABLE IF NOT EXISTS indexer_sync_state (
@@ -1290,6 +1345,22 @@ void postgres_indexer_plugin_impl::on_block_content(const signed_block& b)
          handle_permission_create_many(op.get<permission_create_many_operation>(),
                                    block_num, b.timestamp, trx_id, new_objects);
       }
+      else if (op_type_val == 65) {
+         handle_room_create(op.get<room_create_operation>(),
+                            block_num, b.timestamp, trx_id, created_object_id);
+      }
+      else if (op_type_val == 66) {
+         handle_room_update(op.get<room_update_operation>(),
+                            block_num, b.timestamp, trx_id);
+      }
+      else if (op_type_val == 67) {
+         handle_room_add_participant(op.get<room_add_participant_operation>(),
+                                      block_num, b.timestamp, trx_id, created_object_id);
+      }
+      else if (op_type_val == 68) {
+         handle_room_remove_participant(op.get<room_remove_participant_operation>(),
+                                         block_num, b.timestamp, trx_id);
+      }
    }
 }
 
@@ -1314,9 +1385,13 @@ void postgres_indexer_plugin_impl::handle_content_card_create(
       }
    } catch (...) {}
 
+   std::string room_id_val = "NULL";
+   if (op.room.valid())
+      room_id_val = escape_string(std::string(object_id_type(*op.room)));
+
    std::string sql = "INSERT INTO indexer_content_cards "
       "(content_card_id, subject_account, hash, url, type, description, content_key, storage_data, "
-      "file_name, file_size, block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
+      "file_name, file_size, room_id, block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
       + escape_string(content_card_id) + ", "
       + escape_string(subject_account) + ", "
       + escape_string(op.hash) + ", "
@@ -1327,6 +1402,7 @@ void postgres_indexer_plugin_impl::handle_content_card_create(
       + escape_string(op.storage_data) + ", "
       + file_name_val + ", "
       + file_size_val + ", "
+      + room_id_val + ", "
       + std::to_string(block_num) + ", "
       "to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
       + escape_string(trx_id) + ", "
@@ -1335,7 +1411,7 @@ void postgres_indexer_plugin_impl::handle_content_card_create(
       "hash = EXCLUDED.hash, url = EXCLUDED.url, type = EXCLUDED.type, "
       "description = EXCLUDED.description, content_key = EXCLUDED.content_key, "
       "storage_data = EXCLUDED.storage_data, file_name = EXCLUDED.file_name, "
-      "file_size = EXCLUDED.file_size";
+      "file_size = EXCLUDED.file_size, room_id = EXCLUDED.room_id";
 
    if (!execute_sql(sql)) {
       elog("Failed to insert content_card_create: block ${b}", ("b", block_num));
@@ -1363,9 +1439,13 @@ void postgres_indexer_plugin_impl::handle_content_card_update(
       }
    } catch (...) {}
 
+   std::string room_id_val = "NULL";
+   if (op.room.valid())
+      room_id_val = escape_string(std::string(object_id_type(*op.room)));
+
    std::string sql = "INSERT INTO indexer_content_cards "
       "(content_card_id, subject_account, hash, url, type, description, content_key, storage_data, "
-      "file_name, file_size, block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
+      "file_name, file_size, room_id, block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
       + escape_string(content_card_id) + ", "
       + escape_string(subject_account) + ", "
       + escape_string(op.hash) + ", "
@@ -1376,6 +1456,7 @@ void postgres_indexer_plugin_impl::handle_content_card_update(
       + escape_string(op.storage_data) + ", "
       + file_name_val + ", "
       + file_size_val + ", "
+      + room_id_val + ", "
       + std::to_string(block_num) + ", "
       "to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
       + escape_string(trx_id) + ", "
@@ -1384,7 +1465,7 @@ void postgres_indexer_plugin_impl::handle_content_card_update(
       "hash = EXCLUDED.hash, url = EXCLUDED.url, type = EXCLUDED.type, "
       "description = EXCLUDED.description, content_key = EXCLUDED.content_key, "
       "storage_data = EXCLUDED.storage_data, file_name = EXCLUDED.file_name, "
-      "file_size = EXCLUDED.file_size, block_num = EXCLUDED.block_num, "
+      "file_size = EXCLUDED.file_size, room_id = EXCLUDED.room_id, block_num = EXCLUDED.block_num, "
       "block_time = EXCLUDED.block_time, operation_type = 42";
 
    if (!execute_sql(sql)) {
@@ -1498,6 +1579,95 @@ void postgres_indexer_plugin_impl::handle_permission_remove(
 
    if (!execute_sql(sql)) {
       elog("Failed to update permission_remove: block ${b}", ("b", block_num));
+   }
+}
+
+void postgres_indexer_plugin_impl::handle_room_create(
+   const room_create_operation& op,
+   uint32_t block_num, fc::time_point_sec block_time, const std::string& trx_id,
+   const std::string& object_id)
+{
+   std::string owner = std::string(object_id_type(op.owner));
+   std::string room_id = object_id.empty() ? ("pending-" + trx_id) : object_id;
+
+   std::string sql = "INSERT INTO indexer_rooms "
+      "(room_id, owner, name, room_key, block_num, block_time, trx_id, operation_type) VALUES ("
+      + escape_string(room_id) + ", "
+      + escape_string(owner) + ", "
+      + escape_string(op.name) + ", "
+      + escape_string(op.room_key) + ", "
+      + std::to_string(block_num) + ", "
+      "to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
+      + escape_string(trx_id) + ", "
+      "65) "
+      "ON CONFLICT (room_id) DO UPDATE SET "
+      "name = EXCLUDED.name, room_key = EXCLUDED.room_key";
+
+   if (!execute_sql(sql)) {
+      elog("Failed to insert room_create: block ${b}", ("b", block_num));
+   }
+}
+
+void postgres_indexer_plugin_impl::handle_room_update(
+   const room_update_operation& op,
+   uint32_t block_num, fc::time_point_sec block_time, const std::string& trx_id)
+{
+   std::string room_id = std::string(object_id_type(op.room));
+
+   std::string sql = "UPDATE indexer_rooms SET "
+      "name = " + escape_string(op.name) + ", "
+      "block_num = " + std::to_string(block_num) + ", "
+      "block_time = to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
+      "operation_type = 66 "
+      "WHERE room_id = " + escape_string(room_id);
+
+   if (!execute_sql(sql)) {
+      elog("Failed to update room_update: block ${b}", ("b", block_num));
+   }
+}
+
+void postgres_indexer_plugin_impl::handle_room_add_participant(
+   const room_add_participant_operation& op,
+   uint32_t block_num, fc::time_point_sec block_time, const std::string& trx_id,
+   const std::string& object_id)
+{
+   std::string room_id = std::string(object_id_type(op.room));
+   std::string participant = std::string(object_id_type(op.participant));
+   std::string participant_id = object_id.empty() ? ("pending-" + trx_id) : object_id;
+
+   std::string sql = "INSERT INTO indexer_room_participants "
+      "(participant_id, room_id, participant, content_key, block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
+      + escape_string(participant_id) + ", "
+      + escape_string(room_id) + ", "
+      + escape_string(participant) + ", "
+      + escape_string(op.content_key) + ", "
+      + std::to_string(block_num) + ", "
+      "to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
+      + escape_string(trx_id) + ", "
+      "67, FALSE) "
+      "ON CONFLICT (participant_id) DO UPDATE SET "
+      "content_key = EXCLUDED.content_key, is_removed = FALSE";
+
+   if (!execute_sql(sql)) {
+      elog("Failed to insert room_add_participant: block ${b}", ("b", block_num));
+   }
+}
+
+void postgres_indexer_plugin_impl::handle_room_remove_participant(
+   const room_remove_participant_operation& op,
+   uint32_t block_num, fc::time_point_sec block_time, const std::string& trx_id)
+{
+   std::string participant_id = std::string(object_id_type(op.participant_id));
+
+   std::string sql = "UPDATE indexer_room_participants SET "
+      "is_removed = TRUE, "
+      "block_num = " + std::to_string(block_num) + ", "
+      "block_time = to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
+      "operation_type = 68 "
+      "WHERE participant_id = " + escape_string(participant_id);
+
+   if (!execute_sql(sql)) {
+      elog("Failed to update room_remove_participant: block ${b}", ("b", block_num));
    }
 }
 
