@@ -392,12 +392,14 @@ public:
          const string hash, const string url,
          const string type, const string description,
          const string content_key, const string& storage_data,
+         const string& room = "",
          bool broadcast = false );
 
    signed_transaction update_content_card( const string subject_account,
          const string hash, const string url,
          const string type, const string description,
          const string content_key, const string& storage_data,
+         const string& room = "",
          bool broadcast = false );
 
    signed_transaction remove_content_card( const string subject_account,

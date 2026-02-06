@@ -1572,7 +1572,7 @@ class wallet_api
 
       /**
        * Create a content card.
-       * 
+       *
        * @param subject_account an owner of a content.
        * @param hash an hash value getted from content.
        * @param url a url to the content storage.
@@ -1580,6 +1580,7 @@ class wallet_api
        * @param description a text description of content to convenient full text search.
        * @param content_key a encrypted symmetric key to decrypt content, can be decrypted by subject account.
        * @param storage_data data specific to the cloud storage (content id in the cloud storage).
+       * @param room optional room id for encrypted threads.
        * @param broadcast true if you wish to broadcast the transaction.
        * @returns the signed version of the transaction.
        */
@@ -1591,11 +1592,12 @@ class wallet_api
             const string& description,
             const string& content_key,
             const string& storage_data,
+            const string& room = "",
             bool broadcast = false ) const;
 
       /**
        * Update a content card.
-       * 
+       *
        * @param subject_account an owner of a content.
        * @param hash an hash value getted from content.
        * @param url a url to the content storage.
@@ -1603,6 +1605,7 @@ class wallet_api
        * @param description a text description of content to convenient full text search.
        * @param content_key a encrypted symmetric key to decrypt content, can be decrypted by subject account.
        * @param storage_data data specific to the cloud storage (content id in the cloud storage).
+       * @param room optional room id for encrypted threads.
        * @param broadcast true if you wish to broadcast the transaction.
        * @returns the signed version of the transaction.
        */
@@ -1614,6 +1617,7 @@ class wallet_api
             const string& description,
             const string& content_key,
             const string& storage_data,
+            const string& room = "",
             bool broadcast = false ) const;
 
       /**

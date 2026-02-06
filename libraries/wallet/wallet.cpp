@@ -1034,9 +1034,10 @@ signed_transaction wallet_api::create_content_card(
       const string& description,
       const string& content_key,
       const string& storage_data,
+      const string& room,
       bool broadcast ) const
 {
-   return my->create_content_card(subject_account, hash, url, type, description, content_key, storage_data, broadcast);
+   return my->create_content_card(subject_account, hash, url, type, description, content_key, storage_data, room, broadcast);
 }
 
 signed_transaction wallet_api::update_content_card(
@@ -1047,9 +1048,10 @@ signed_transaction wallet_api::update_content_card(
       const string& description,
       const string& content_key,
       const string& storage_data,
+      const string& room,
       bool broadcast ) const
 {
-   return my->update_content_card(subject_account, hash, url, type, description, content_key, storage_data, broadcast);
+   return my->update_content_card(subject_account, hash, url, type, description, content_key, storage_data, room, broadcast);
 }
 
 signed_transaction wallet_api::remove_content_card( const string& subject_account,
