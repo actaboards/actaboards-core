@@ -2703,7 +2703,7 @@ vector<room_object> database_api_impl::get_rooms_by_owner( const account_id_type
    vector<room_object> result;
    while( itr != by_owner_idx.end() && itr->owner == owner && limit-- )
    {
-      if( itr->id.instance.value >= room_id.instance.value )
+      if( itr->id.instance() >= room_id.instance.value )
          result.push_back(*itr);
       ++itr;
    }
@@ -2729,7 +2729,7 @@ vector<room_participant_object> database_api_impl::get_room_participants( const 
    vector<room_participant_object> result;
    while( itr != by_room_idx.end() && itr->room == room && limit-- )
    {
-      if( itr->id.instance.value >= participant_id.instance.value )
+      if( itr->id.instance() >= participant_id.instance.value )
          result.push_back(*itr);
       ++itr;
    }
@@ -2755,7 +2755,7 @@ vector<room_participant_object> database_api_impl::get_rooms_by_participant( con
    vector<room_participant_object> result;
    while( itr != by_part_idx.end() && itr->participant == participant && limit-- )
    {
-      if( itr->id.instance.value >= participant_id.instance.value )
+      if( itr->id.instance() >= participant_id.instance.value )
          result.push_back(*itr);
       ++itr;
    }
