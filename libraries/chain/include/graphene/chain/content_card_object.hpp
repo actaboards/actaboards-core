@@ -61,6 +61,7 @@ namespace graphene { namespace chain {
         struct by_subject_account;
         struct by_subject_account_and_hash;
         struct by_hash;
+        struct by_room_content;
 
         typedef multi_index_container<
               content_card_object,
@@ -81,6 +82,12 @@ namespace graphene { namespace chain {
                      ordered_unique< tag<by_hash>,
                            composite_key< content_card_object,
                                  member< content_card_object, string, &content_card_object::hash>,
+                                 member< object, object_id_type, &object::id>
+                           >
+                     >,
+                     ordered_non_unique< tag<by_room_content>,
+                           composite_key< content_card_object,
+                                 member< content_card_object, optional<room_id_type>, &content_card_object::room>,
                                  member< object, object_id_type, &object::id>
                            >
                      >

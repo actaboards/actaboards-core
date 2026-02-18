@@ -427,6 +427,10 @@ public:
          uint64_t content_id,
          unsigned limit = 100 ) const;
 
+   std::vector<content_card_object> get_content_cards_by_room( const string& room,
+         uint64_t start_content,
+         unsigned limit = 100 ) const;
+
    permission_object get_permission_by_id( uint64_t permission_id ) const;
 
    std::vector<permission_object> get_permissions( const string& operator_account,
@@ -439,32 +443,33 @@ public:
          bool broadcast = false );
 
    signed_transaction update_room( const string& owner,
-         uint64_t room_id,
+         const string& room,
          const string& name,
          bool broadcast = false );
 
    signed_transaction add_room_participant( const string& owner,
-         uint64_t room_id,
+         const string& room,
          const string& participant,
          const string& content_key,
          bool broadcast = false );
 
    signed_transaction remove_room_participant( const string& owner,
-         uint64_t participant_id,
+         const string& room,
+         const string& participant,
          bool broadcast = false );
 
-   room_object get_room_by_id( uint64_t room_id ) const;
+   room_object get_room_by_id( const string& room ) const;
 
    std::vector<room_object> get_rooms_by_owner( const string& owner,
-         uint64_t room_id,
+         uint64_t start_room,
          unsigned limit = 100 ) const;
 
-   std::vector<room_participant_object> get_room_participants( uint64_t room_id,
-         uint64_t participant_id,
+   std::vector<room_participant_object> get_room_participants( const string& room,
+         uint64_t start_participant,
          unsigned limit = 100 ) const;
 
    std::vector<room_participant_object> get_rooms_by_participant( const string& participant,
-         uint64_t participant_id,
+         uint64_t start_record,
          unsigned limit = 100 ) const;
 
    void dbg_make_uia(string creator, string symbol);

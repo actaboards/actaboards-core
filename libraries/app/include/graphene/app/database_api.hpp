@@ -906,6 +906,17 @@ class database_api
                                                      const content_card_id_type content_id, uint32_t limit ) const;
 
       /**
+       * @brief Get list of content cards by room
+       * @param room The room id
+       * @param content_id Lower bound of content id to start getting results
+       * @param limit Maximum number of content card objects to fetch
+       * @return The content card object list
+       */
+      vector<content_card_object> get_content_cards_by_room( const room_id_type room,
+                                                             const content_card_id_type content_id,
+                                                             uint32_t limit ) const;
+
+      /**
        * @brief Get permission object by id
        * @param permission_id The id of permission object
        * @return The permission object
@@ -953,6 +964,15 @@ class database_api
       vector<room_participant_object> get_room_participants( const room_id_type room,
                                                              const room_participant_id_type participant_id,
                                                              uint32_t limit ) const;
+
+      /**
+       * @brief Get a participant record in a room
+       * @param room The room to search in
+       * @param participant The participant account to search for
+       * @return The room participant object, if found
+       */
+      fc::optional<room_participant_object> get_room_participant( const room_id_type room,
+                                                                  const account_id_type participant ) const;
 
       /**
        * @brief Get list of rooms a user is a participant of
@@ -1135,6 +1155,7 @@ FC_API(graphene::app::database_api,
    (get_last_personal_data)
    (get_content_card_by_id)
    (get_content_cards)
+   (get_content_cards_by_room)
    (get_permission_by_id)
    (get_permissions)
 
@@ -1142,6 +1163,7 @@ FC_API(graphene::app::database_api,
    (get_room_by_id)
    (get_rooms_by_owner)
    (get_room_participants)
+   (get_room_participant)
    (get_rooms_by_participant)
 
    // HTLC

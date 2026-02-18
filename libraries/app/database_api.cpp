@@ -2624,6 +2624,35 @@ vector<content_card_object> database_api_impl::get_content_cards( const account_
    return result;
 }
 
+vector<content_card_object> database_api::get_content_cards_by_room( const room_id_type room,
+                                                                     const content_card_id_type content_id,
+                                                                     uint32_t limit ) const
+{
+   return my->get_content_cards_by_room(room, content_id, limit);
+}
+
+vector<content_card_object> database_api_impl::get_content_cards_by_room( const room_id_type room,
+                                                                          const content_card_id_type content_id,
+                                                                          uint32_t limit ) const
+{
+   const auto& node_properties = _db.get_node_properties();
+   FC_ASSERT(node_properties.active_plugins.find("content_cards") != node_properties.active_plugins.end(),
+    "This api is switched off because content_cards plugin does not enabled" );
+
+   const auto& cc_idx = _db.get_index_type<content_card_index>();
+   const auto& by_room_idx = cc_idx.indices().get<by_room_content>();
+   auto itr = by_room_idx.lower_bound(boost::make_tuple(optional<room_id_type>(room), content_id));
+
+   vector<content_card_object> result;
+   while( itr != by_room_idx.end() && itr->room.valid() && *(itr->room) == room && limit-- )
+   {
+      result.push_back(*itr);
+      ++itr;
+   }
+
+   return result;
+}
+
 fc::optional<permission_object> database_api::get_permission_by_id( const permission_id_type permission_id ) const
 {
    return my->get_permission_by_id(permission_id);
@@ -2735,6 +2764,27 @@ vector<room_participant_object> database_api_impl::get_room_participants( const 
    }
 
    return result;
+}
+
+fc::optional<room_participant_object> database_api::get_room_participant( const room_id_type room,
+                                                                          const account_id_type participant ) const
+{
+   return my->get_room_participant(room, participant);
+}
+
+fc::optional<room_participant_object> database_api_impl::get_room_participant( const room_id_type room,
+                                                                               const account_id_type participant ) const
+{
+   const auto& participant_idx = _db.get_index_type<room_participant_index>();
+   const auto& by_room_part_idx = participant_idx.indices().get<by_room_and_participant>();
+   auto itr = by_room_part_idx.find(boost::make_tuple(room, participant));
+
+   if( itr == by_room_part_idx.end() )
+   {
+      return fc::optional<room_participant_object>();
+   }
+
+   return *itr;
 }
 
 vector<room_participant_object> database_api::get_rooms_by_participant( const account_id_type participant,

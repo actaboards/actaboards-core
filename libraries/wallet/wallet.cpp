@@ -1100,6 +1100,14 @@ std::vector<content_card_object> wallet_api::get_content_cards(
    return my->get_content_cards(subject_account, content_id, limit);
 }
 
+std::vector<content_card_object> wallet_api::get_content_cards_by_room(
+      const string& room,
+      uint64_t start_content,
+      unsigned limit ) const
+{
+   return my->get_content_cards_by_room(room, start_content, limit);
+}
+
 permission_object wallet_api::get_permission_by_id( uint64_t permission_id ) const
 {
    return my->get_permission_by_id(permission_id);
@@ -1124,58 +1132,59 @@ signed_transaction wallet_api::create_room(
 
 signed_transaction wallet_api::update_room(
       const string& owner,
-      uint64_t room_id,
+      const string& room,
       const string& name,
       bool broadcast ) const
 {
-   return my->update_room(owner, room_id, name, broadcast);
+   return my->update_room(owner, room, name, broadcast);
 }
 
 signed_transaction wallet_api::add_room_participant(
       const string& owner,
-      uint64_t room_id,
+      const string& room,
       const string& participant,
       const string& content_key,
       bool broadcast ) const
 {
-   return my->add_room_participant(owner, room_id, participant, content_key, broadcast);
+   return my->add_room_participant(owner, room, participant, content_key, broadcast);
 }
 
 signed_transaction wallet_api::remove_room_participant(
       const string& owner,
-      uint64_t participant_id,
+      const string& room,
+      const string& participant,
       bool broadcast ) const
 {
-   return my->remove_room_participant(owner, participant_id, broadcast);
+   return my->remove_room_participant(owner, room, participant, broadcast);
 }
 
-room_object wallet_api::get_room_by_id( uint64_t room_id ) const
+room_object wallet_api::get_room_by_id( const string& room ) const
 {
-   return my->get_room_by_id(room_id);
+   return my->get_room_by_id(room);
 }
 
 std::vector<room_object> wallet_api::get_rooms_by_owner(
       const string& owner,
-      uint64_t room_id,
+      uint64_t start_room,
       unsigned limit ) const
 {
-   return my->get_rooms_by_owner(owner, room_id, limit);
+   return my->get_rooms_by_owner(owner, start_room, limit);
 }
 
 std::vector<room_participant_object> wallet_api::get_room_participants(
-      uint64_t room_id,
-      uint64_t participant_id,
+      const string& room,
+      uint64_t start_participant,
       unsigned limit ) const
 {
-   return my->get_room_participants(room_id, participant_id, limit);
+   return my->get_room_participants(room, start_participant, limit);
 }
 
 std::vector<room_participant_object> wallet_api::get_rooms_by_participant(
       const string& participant,
-      uint64_t participant_id,
+      uint64_t start_record,
       unsigned limit ) const
 {
-   return my->get_rooms_by_participant(participant, participant_id, limit);
+   return my->get_rooms_by_participant(participant, start_record, limit);
 }
 
 string wallet_api::help()const

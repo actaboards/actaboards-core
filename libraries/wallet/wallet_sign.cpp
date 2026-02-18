@@ -754,6 +754,15 @@ namespace graphene { namespace wallet { namespace detail {
       return contents;
    }
 
+   std::vector<content_card_object> wallet_api_impl::get_content_cards_by_room( const string& room,
+         uint64_t start_content,
+         unsigned limit ) const
+   {
+      auto room_id = fc::variant(room, 1).as<room_id_type>(1);
+      auto contents = _remote_db->get_content_cards_by_room(room_id, content_card_id_type(start_content), limit);
+      return contents;
+   }
+
    permission_object wallet_api_impl::get_permission_by_id( uint64_t permission_id ) const
    {
       auto perm = _remote_db->get_permission_by_id(permission_id_type(permission_id));
@@ -793,15 +802,16 @@ namespace graphene { namespace wallet { namespace detail {
    } FC_CAPTURE_AND_RETHROW( (owner)(name)(room_key)(broadcast) ) }
 
    signed_transaction wallet_api_impl::update_room( const string& owner,
-         uint64_t room_id,
+         const string& room,
          const string& name,
          bool broadcast )
    { try {
       auto owner_id = get_account(owner).get_id();
+      auto room_id = fc::variant(room, 1).as<room_id_type>(1);
 
       room_update_operation update_op;
       update_op.owner = owner_id;
-      update_op.room = room_id_type(room_id);
+      update_op.room = room_id;
       update_op.name = name;
 
       signed_transaction tx;
@@ -810,20 +820,21 @@ namespace graphene { namespace wallet { namespace detail {
       tx.validate();
 
       return sign_transaction(tx, broadcast);
-   } FC_CAPTURE_AND_RETHROW( (owner)(room_id)(name)(broadcast) ) }
+   } FC_CAPTURE_AND_RETHROW( (owner)(room)(name)(broadcast) ) }
 
    signed_transaction wallet_api_impl::add_room_participant( const string& owner,
-         uint64_t room_id,
+         const string& room,
          const string& participant,
          const string& content_key,
          bool broadcast )
    { try {
       auto owner_id = get_account(owner).get_id();
       auto participant_id = get_account(participant).get_id();
+      auto room_id = fc::variant(room, 1).as<room_id_type>(1);
 
       room_add_participant_operation add_op;
       add_op.owner = owner_id;
-      add_op.room = room_id_type(room_id);
+      add_op.room = room_id;
       add_op.participant = participant_id;
       add_op.content_key = content_key;
 
@@ -833,17 +844,24 @@ namespace graphene { namespace wallet { namespace detail {
       tx.validate();
 
       return sign_transaction(tx, broadcast);
-   } FC_CAPTURE_AND_RETHROW( (owner)(room_id)(participant)(content_key)(broadcast) ) }
+   } FC_CAPTURE_AND_RETHROW( (owner)(room)(participant)(content_key)(broadcast) ) }
 
    signed_transaction wallet_api_impl::remove_room_participant( const string& owner,
-         uint64_t participant_id,
+         const string& room,
+         const string& participant,
          bool broadcast )
    { try {
       auto owner_id = get_account(owner).get_id();
+      auto room_id = fc::variant(room, 1).as<room_id_type>(1);
+      auto participant_account_id = get_account(participant).get_id();
+      auto participant_obj = _remote_db->get_room_participant(room_id, participant_account_id);
+
+      FC_ASSERT( participant_obj.valid(), "Participant ${participant} is not in room ${room}.",
+                 ("participant", participant)("room", room) );
 
       room_remove_participant_operation remove_op;
       remove_op.owner = owner_id;
-      remove_op.participant_id = room_participant_id_type(participant_id);
+      remove_op.participant_id = participant_obj->id;
 
       signed_transaction tx;
       tx.operations.push_back(remove_op);
@@ -851,40 +869,40 @@ namespace graphene { namespace wallet { namespace detail {
       tx.validate();
 
       return sign_transaction(tx, broadcast);
-   } FC_CAPTURE_AND_RETHROW( (owner)(participant_id)(broadcast) ) }
+   } FC_CAPTURE_AND_RETHROW( (owner)(room)(participant)(broadcast) ) }
 
-   room_object wallet_api_impl::get_room_by_id( uint64_t room_id ) const
+   room_object wallet_api_impl::get_room_by_id( const string& room ) const
    {
-      auto room = _remote_db->get_room_by_id(room_id_type(room_id));
-      if (room.valid()) {
-         return *room;
-      }
-      return room_object();
+      auto room_id = fc::variant(room, 1).as<room_id_type>(1);
+      auto room_obj = _remote_db->get_room_by_id(room_id);
+      FC_ASSERT( room_obj.valid(), "Room ${room} does not exist.", ("room", room) );
+      return *room_obj;
    }
 
    std::vector<room_object> wallet_api_impl::get_rooms_by_owner( const string& owner,
-         uint64_t room_id,
+         uint64_t start_room,
          unsigned limit ) const
    {
       auto owner_id = get_account(owner).get_id();
-      auto rooms = _remote_db->get_rooms_by_owner(owner_id, room_id_type(room_id), limit);
+      auto rooms = _remote_db->get_rooms_by_owner(owner_id, room_id_type(start_room), limit);
       return rooms;
    }
 
-   std::vector<room_participant_object> wallet_api_impl::get_room_participants( uint64_t room_id,
-         uint64_t participant_id,
+   std::vector<room_participant_object> wallet_api_impl::get_room_participants( const string& room,
+         uint64_t start_participant,
          unsigned limit ) const
    {
-      auto participants = _remote_db->get_room_participants(room_id_type(room_id), room_participant_id_type(participant_id), limit);
+      auto room_id = fc::variant(room, 1).as<room_id_type>(1);
+      auto participants = _remote_db->get_room_participants(room_id, room_participant_id_type(start_participant), limit);
       return participants;
    }
 
    std::vector<room_participant_object> wallet_api_impl::get_rooms_by_participant( const string& participant,
-         uint64_t participant_id,
+         uint64_t start_record,
          unsigned limit ) const
    {
       auto account_id = get_account(participant).get_id();
-      auto rooms = _remote_db->get_rooms_by_participant(account_id, room_participant_id_type(participant_id), limit);
+      auto rooms = _remote_db->get_rooms_by_participant(account_id, room_participant_id_type(start_record), limit);
       return rooms;
    }
 

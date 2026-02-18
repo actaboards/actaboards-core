@@ -206,6 +206,9 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       fc::optional<content_card_object> get_content_card_by_id( const content_card_id_type content_id ) const;
       vector<content_card_object> get_content_cards( const account_id_type subject_account,
                                                      const content_card_id_type content_id, uint32_t limit ) const;
+      vector<content_card_object> get_content_cards_by_room( const room_id_type room,
+                                                             const content_card_id_type content_id,
+                                                             uint32_t limit ) const;
       fc::optional<permission_object> get_permission_by_id( const permission_id_type permission_id ) const;
       vector<permission_object> get_permissions( const account_id_type operator_account,
                                                  const permission_id_type permission_id, uint32_t limit ) const;
@@ -217,6 +220,8 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       vector<room_participant_object> get_room_participants( const room_id_type room,
                                                              const room_participant_id_type participant_id,
                                                              uint32_t limit ) const;
+      fc::optional<room_participant_object> get_room_participant( const room_id_type room,
+                                                                  const account_id_type participant ) const;
       vector<room_participant_object> get_rooms_by_participant( const account_id_type participant,
                                                                 const room_participant_id_type participant_id,
                                                                 uint32_t limit ) const;
