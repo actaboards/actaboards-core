@@ -1,4 +1,4 @@
 [submodule "libraries/fc"]
     path = libraries/fc
-    url = https://github.com/actaboards/actaboards-fc.git
+    url = https://github.com/acta-network/acta-network-fc.git
     ignore = dirty
