@@ -53,7 +53,8 @@ struct hardfork_visitor {
    using ico_ops     = TL::list<ico_balance_claim_operation>;
    using permission_many_ops = TL::list<permission_create_many_operation>;
    using room_ops    = TL::list<room_create_operation, room_update_operation,
-                                room_add_participant_operation, room_remove_participant_operation>;
+                                room_add_participant_operation, room_remove_participant_operation,
+                                room_rotate_key_operation>;
 
    fc::time_point_sec now;
 

@@ -23,6 +23,7 @@
 #include <graphene/chain/content_card_object.hpp>
 #include <graphene/chain/permission_object.hpp>
 #include <graphene/chain/commit_reveal_object.hpp>
+#include <graphene/chain/room_object.hpp>
 
 using namespace fc;
 namespace graphene { namespace chain { namespace detail {
@@ -357,6 +358,13 @@ struct get_impacted_account_visitor
       _impacted.insert( op.fee_payer() );
       _impacted.insert( op.owner );
    }
+   void operator()( const room_rotate_key_operation& op )
+   {
+      _impacted.insert( op.fee_payer() );
+      _impacted.insert( op.owner );
+      for( const auto& entry : op.participant_keys )
+         _impacted.insert( entry.first );
+   }
    void operator()( const commit_create_operation& op )
    {
       _impacted.insert( op.fee_payer() );
@@ -501,6 +509,21 @@ void get_relevant_accounts( const object* obj, flat_set<account_id_type>& accoun
            const auto& cr_obj = dynamic_cast<const commit_reveal_object*>(obj);
            FC_ASSERT( cr_obj != nullptr );
            accounts.insert( cr_obj->account );
+           break;
+        } case room_object_type:{
+           const auto& room_obj = dynamic_cast<const room_object*>(obj);
+           FC_ASSERT( room_obj != nullptr );
+           accounts.insert( room_obj->owner );
+           break;
+        } case room_participant_object_type:{
+           const auto& rp_obj = dynamic_cast<const room_participant_object*>(obj);
+           FC_ASSERT( rp_obj != nullptr );
+           accounts.insert( rp_obj->participant );
+           break;
+        } case room_key_epoch_object_type:{
+           const auto& rke_obj = dynamic_cast<const room_key_epoch_object*>(obj);
+           FC_ASSERT( rke_obj != nullptr );
+           accounts.insert( rke_obj->participant );
            break;
         }
       }
