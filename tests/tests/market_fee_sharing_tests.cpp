@@ -114,10 +114,10 @@ BOOST_AUTO_TEST_CASE(create_asset_with_reward_percent_of_100_after_hf1774)
    {
       generate_block();
 
-      ACTOR(rsquaredchp1);
+      ACTOR(actanet);
 
       uint16_t reward_percent = GRAPHENE_100_PERCENT; // 100.00%
-      flat_set<account_id_type> whitelist = {rsquaredchp1_id};
+      flat_set<account_id_type> whitelist = {actanet_id};
       price price(asset(1, asset_id_type(1)), asset(1));
       uint16_t market_fee_percent = 100;
 
@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE(create_asset_with_reward_percent_of_100_after_hf1774)
       options.value.whitelist_market_fee_sharing = whitelist;
 
       asset_object usd_asset = create_user_issued_asset("USD",
-                                                        rsquaredchp1,
+                                                        actanet,
                                                         charge_market_fee,
                                                         price,
                                                         2,
@@ -144,15 +144,15 @@ BOOST_AUTO_TEST_CASE(set_reward_percent_to_100_after_hf1774)
 {
    try
    {
-      ACTOR(rsquaredchp1);
+      ACTOR(actanet);
 
-      asset_object usd_asset = create_user_issued_asset("USD", rsquaredchp1, charge_market_fee); // make a copy
+      asset_object usd_asset = create_user_issued_asset("USD", actanet, charge_market_fee); // make a copy
 
       generate_block();
 
       uint16_t reward_percent = GRAPHENE_100_PERCENT; // 100.00%
-      flat_set<account_id_type> whitelist = {rsquaredchp1_id};
-      update_asset(rsquaredchp1_id, rsquaredchp1_private_key, usd_asset.get_id(), reward_percent, whitelist);
+      flat_set<account_id_type> whitelist = {actanet_id};
+      update_asset(actanet_id, actanet_private_key, usd_asset.get_id(), reward_percent, whitelist);
 
       additional_asset_options options = usd_asset.get_id()(db).options.extensions.value;
       BOOST_CHECK_EQUAL(reward_percent, *options.reward_percent);
@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE(create_actors)
 {
    try
    {
-      ACTORS((rsquaredchp1)(izzyregistrar)(izzyreferrer)(tempregistrar));
+      ACTORS((actanet)(izzyregistrar)(izzyreferrer)(tempregistrar));
 
       upgrade_to_lifetime_member(izzyregistrar);
       upgrade_to_lifetime_member(izzyreferrer);
@@ -173,7 +173,7 @@ BOOST_AUTO_TEST_CASE(create_actors)
 
       price price(asset(1, asset_id_type(1)), asset(1));
       uint16_t market_fee_percent = 20 * GRAPHENE_1_PERCENT;
-      const asset_object rsquaredchp1coin = create_user_issued_asset( "JCOIN", rsquaredchp1, charge_market_fee,
+      const asset_object actanetcoin = create_user_issued_asset( "JCOIN", actanet, charge_market_fee,
                                                               price, 2, market_fee_percent );
 
       const account_object alice = create_account("alice", izzyregistrar, izzyreferrer, 50/*0.5%*/);
@@ -184,7 +184,7 @@ BOOST_AUTO_TEST_CASE(create_actors)
                                                            GRAPHENE_TEMP_ACCOUNT(db), 50u);
 
       // prepare users' balance
-      issue_uia( alice, rsquaredchp1coin.amount( 20000000 ) );
+      issue_uia( alice, actanetcoin.amount( 20000000 ) );
 
       transfer( committee_account, alice.get_id(), core_asset(1000) );
       transfer( committee_account, bob.get_id(),   core_asset(1000) );
@@ -244,15 +244,15 @@ BOOST_AUTO_TEST_CASE(update_asset_via_proposal_test)
 {
    try
    {
-      ACTOR(rsquaredchp1);
-      asset_object usd_asset = create_user_issued_asset("USD", rsquaredchp1, charge_market_fee);
+      ACTOR(actanet);
+      asset_object usd_asset = create_user_issued_asset("USD", actanet, charge_market_fee);
 
       additional_asset_options_t options;
       options.value.reward_percent = 100;
-      options.value.whitelist_market_fee_sharing = flat_set<account_id_type>{rsquaredchp1_id};
+      options.value.whitelist_market_fee_sharing = flat_set<account_id_type>{actanet_id};
 
       asset_update_operation update_op;
-      update_op.issuer = rsquaredchp1_id;
+      update_op.issuer = actanet_id;
       update_op.asset_to_update = usd_asset.get_id();
       asset_options new_options;
       update_op.new_options = usd_asset.options;
@@ -261,7 +261,7 @@ BOOST_AUTO_TEST_CASE(update_asset_via_proposal_test)
       const auto& curfees = *db.get_global_properties().parameters.current_fees;
       const auto& proposal_create_fees = curfees.get<proposal_create_operation>();
       proposal_create_operation prop;
-      prop.fee_paying_account = rsquaredchp1_id;
+      prop.fee_paying_account = actanet_id;
       prop.proposed_ops.emplace_back( update_op );
       prop.expiration_time =  db.head_block_time() + fc::days(1);
       prop.fee = asset( proposal_create_fees.fee + proposal_create_fees.price_per_kbyte );
@@ -272,7 +272,7 @@ BOOST_AUTO_TEST_CASE(update_asset_via_proposal_test)
          tx.operations.push_back( prop );
          db.current_fee_schedule().set_fee( tx.operations.back() );
          set_expiration( db, tx );
-         sign( tx, rsquaredchp1_private_key );
+         sign( tx, actanet_private_key );
          PUSH_TX( db, tx );
       }
    }
@@ -282,25 +282,25 @@ BOOST_AUTO_TEST_CASE(update_asset_via_proposal_test)
 BOOST_AUTO_TEST_CASE(issue_asset){
    try
    {
-       ACTORS((alice)(bob)(izzy)(rsquaredchp1));
+       ACTORS((alice)(bob)(izzy)(actanet));
       // Izzy issues asset to Alice  (Izzycoin market percent - 10%)
-      // RSquaredCHP1 issues asset to Bob    (Jillcoin market percent - 20%)
+      // actanet issues asset to Bob    (Jillcoin market percent - 20%)
 
       fund( alice, core_asset(1000000) );
       fund( bob, core_asset(1000000) );
       fund( izzy, core_asset(1000000) );
-      fund( rsquaredchp1, core_asset(1000000) );
+      fund( actanet, core_asset(1000000) );
 
       price price(asset(1, asset_id_type(1)), asset(1));
       constexpr auto izzycoin_market_percent = 10*GRAPHENE_1_PERCENT;
-      asset_object izzycoin = create_user_issued_asset( "IZZYCOIN", rsquaredchp1,  charge_market_fee, price, 2, izzycoin_market_percent );
+      asset_object izzycoin = create_user_issued_asset( "IZZYCOIN", actanet,  charge_market_fee, price, 2, izzycoin_market_percent );
 
-      constexpr auto rsquaredchp1coin_market_percent = 20*GRAPHENE_1_PERCENT;
-      asset_object rsquaredchp1coin = create_user_issued_asset( "JILLCOIN", rsquaredchp1,  charge_market_fee, price, 2, rsquaredchp1coin_market_percent );
+      constexpr auto actanetcoin_market_percent = 20*GRAPHENE_1_PERCENT;
+      asset_object actanetcoin = create_user_issued_asset( "JILLCOIN", actanet,  charge_market_fee, price, 2, actanetcoin_market_percent );
 
       // Alice and Bob create some coins
       issue_uia( alice, izzycoin.amount( 100000 ) );
-      issue_uia( bob, rsquaredchp1coin.amount( 100000 ) );
+      issue_uia( bob, actanetcoin.amount( 100000 ) );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -384,66 +384,66 @@ BOOST_AUTO_TEST_CASE(white_list_asset_rewards_test)
 {
    try
    {
-      ACTORS((elonregistrar)(robregistrar)(elonreferrer)(robreferrer)(rsquaredchp1));
+      ACTORS((elonregistrar)(robregistrar)(elonreferrer)(robreferrer)(actanet));
 
-      // RSquaredCHP1 issues white_list asset to Elon
-      // RSquaredCHP1 issues white_list asset to Rob
-      // Robreferrer added to blacklist for rsquaredchp1coin asset
-      // Elonregistrar added to blacklist for rsquaredchp1coin2 asset
+      // actanet issues white_list asset to Elon
+      // actanet issues white_list asset to Rob
+      // Robreferrer added to blacklist for actanetcoin asset
+      // Elonregistrar added to blacklist for actanetcoin2 asset
       // Elon and Rob trade in the market and pay fees
       // Check registrar/referrer rewards
       upgrade_to_lifetime_member(elonregistrar);
       upgrade_to_lifetime_member(elonreferrer);
       upgrade_to_lifetime_member(robregistrar);
       upgrade_to_lifetime_member(robreferrer);
-      upgrade_to_lifetime_member(rsquaredchp1);
+      upgrade_to_lifetime_member(actanet);
 
       const account_object elon = create_account("elon", elonregistrar, elonreferrer, 20*GRAPHENE_1_PERCENT);
       const account_object rob   = create_account("rob", robregistrar, robreferrer, 20*GRAPHENE_1_PERCENT);
 
       fund( elon, core_asset(1000000) );
       fund( rob, core_asset(1000000) );
-      fund( rsquaredchp1, core_asset(2000000) );
+      fund( actanet, core_asset(2000000) );
 
       price price(asset(1, asset_id_type(1)), asset(1));
-      constexpr auto rsquaredchp1coin_market_percent = 10*GRAPHENE_1_PERCENT;
-      constexpr auto rsquaredchp1coin_market_percent2 = 20*GRAPHENE_1_PERCENT;
-      const asset_id_type rsquaredchp1coin_id = create_user_issued_asset( "RSQRCHP1COIN", rsquaredchp1, charge_market_fee|white_list, price, 0, rsquaredchp1coin_market_percent ).id;
-      const asset_id_type rsquaredchp1coin_id2 = create_user_issued_asset( "RSQRCHP1COIN2", rsquaredchp1, charge_market_fee|white_list, price, 0, rsquaredchp1coin_market_percent2 ).id;
+      constexpr auto actanetcoin_market_percent = 10*GRAPHENE_1_PERCENT;
+      constexpr auto actanetcoin_market_percent2 = 20*GRAPHENE_1_PERCENT;
+      const asset_id_type actanetcoin_id = create_user_issued_asset( "RSQRCHP1COIN", actanet, charge_market_fee|white_list, price, 0, actanetcoin_market_percent ).id;
+      const asset_id_type actanetcoin_id2 = create_user_issued_asset( "RSQRCHP1COIN2", actanet, charge_market_fee|white_list, price, 0, actanetcoin_market_percent2 ).id;
 
       // Elon and Rob create some coins
-      issue_uia( elon, rsquaredchp1coin_id(db).amount( 200000 ) );
-      issue_uia( rob, rsquaredchp1coin_id2(db).amount( 200000 ) );
+      issue_uia( elon, actanetcoin_id(db).amount( 200000 ) );
+      issue_uia( rob, actanetcoin_id2(db).amount( 200000 ) );
 
-      constexpr auto rsquaredchp1coin_reward_percent = 50*GRAPHENE_1_PERCENT;
-      constexpr auto rsquaredchp1coin_reward_percent2 = 50*GRAPHENE_1_PERCENT;
+      constexpr auto actanetcoin_reward_percent = 50*GRAPHENE_1_PERCENT;
+      constexpr auto actanetcoin_reward_percent2 = 50*GRAPHENE_1_PERCENT;
 
-      update_asset(rsquaredchp1_id, rsquaredchp1_private_key, rsquaredchp1coin_id, rsquaredchp1coin_reward_percent);
-      update_asset(rsquaredchp1_id, rsquaredchp1_private_key, rsquaredchp1coin_id2, rsquaredchp1coin_reward_percent2);
+      update_asset(actanet_id, actanet_private_key, actanetcoin_id, actanetcoin_reward_percent);
+      update_asset(actanet_id, actanet_private_key, actanetcoin_id2, actanetcoin_reward_percent2);
 
-      BOOST_TEST_MESSAGE( "Attempting to blacklist robreferrer for rsquaredchp1coin asset" );
-      asset_update_blacklist_authority(rsquaredchp1_id, rsquaredchp1coin_id, rsquaredchp1_id, rsquaredchp1_private_key);
-      add_account_to_blacklist(rsquaredchp1_id, robreferrer_id, rsquaredchp1_private_key);
-      BOOST_CHECK( !(is_authorized_asset( db, robreferrer_id(db), rsquaredchp1coin_id(db) )) );
+      BOOST_TEST_MESSAGE( "Attempting to blacklist robreferrer for actanetcoin asset" );
+      asset_update_blacklist_authority(actanet_id, actanetcoin_id, actanet_id, actanet_private_key);
+      add_account_to_blacklist(actanet_id, robreferrer_id, actanet_private_key);
+      BOOST_CHECK( !(is_authorized_asset( db, robreferrer_id(db), actanetcoin_id(db) )) );
 
-      BOOST_TEST_MESSAGE( "Attempting to blacklist elonregistrar for rsquaredchp1coin2 asset" );
-      asset_update_blacklist_authority(rsquaredchp1_id, rsquaredchp1coin_id2, rsquaredchp1_id, rsquaredchp1_private_key);
-      add_account_to_blacklist(rsquaredchp1_id, elonregistrar_id, rsquaredchp1_private_key);
-      BOOST_CHECK( !(is_authorized_asset( db, elonregistrar_id(db), rsquaredchp1coin_id2(db) )) );
+      BOOST_TEST_MESSAGE( "Attempting to blacklist elonregistrar for actanetcoin2 asset" );
+      asset_update_blacklist_authority(actanet_id, actanetcoin_id2, actanet_id, actanet_private_key);
+      add_account_to_blacklist(actanet_id, elonregistrar_id, actanet_private_key);
+      BOOST_CHECK( !(is_authorized_asset( db, elonregistrar_id(db), actanetcoin_id2(db) )) );
 
       // Elon and Rob place orders which match
-      create_sell_order( elon.id, rsquaredchp1coin_id(db).amount(1000), rsquaredchp1coin_id2(db).amount(1500) ); // Elon is willing to sell hes 1000 RSQRCHP1COIN for 1.5 RSQRCHP1COIN2
-      create_sell_order(   rob.id, rsquaredchp1coin_id2(db).amount(1500), rsquaredchp1coin_id(db).amount(1000) );   // Rob is buying up to 1500 RSQRCHP1COIN2 for up to 0.6 RSQRCHP1COIN
+      create_sell_order( elon.id, actanetcoin_id(db).amount(1000), actanetcoin_id2(db).amount(1500) ); // Elon is willing to sell hes 1000 RSQRCHP1COIN for 1.5 RSQRCHP1COIN2
+      create_sell_order(   rob.id, actanetcoin_id2(db).amount(1500), actanetcoin_id(db).amount(1000) );   // Rob is buying up to 1500 RSQRCHP1COIN2 for up to 0.6 RSQRCHP1COIN
 
       // 1000 RSQRCHP1COIN and 1500 RSQRCHP1COIN2 are matched, so the fees should be
       //   100 RSQRCHP1COIN (10%) and 300 RSQRCHP1COIN2 (20%).
 
       // Only Rob's registrar should get rewards
-      share_type rob_registrar_reward = get_market_fee_reward( rob.registrar, rsquaredchp1coin_id );
+      share_type rob_registrar_reward = get_market_fee_reward( rob.registrar, actanetcoin_id );
       BOOST_CHECK_GT( rob_registrar_reward, 0 );
-      BOOST_CHECK_EQUAL( get_market_fee_reward( rob.referrer, rsquaredchp1coin_id ), 0 );
-      BOOST_CHECK_EQUAL( get_market_fee_reward( elon.registrar, rsquaredchp1coin_id2 ), 0 );
-      BOOST_CHECK_EQUAL( get_market_fee_reward( elon.referrer, rsquaredchp1coin_id2 ), 0 );
+      BOOST_CHECK_EQUAL( get_market_fee_reward( rob.referrer, actanetcoin_id ), 0 );
+      BOOST_CHECK_EQUAL( get_market_fee_reward( elon.registrar, actanetcoin_id2 ), 0 );
+      BOOST_CHECK_EQUAL( get_market_fee_reward( elon.referrer, actanetcoin_id2 ), 0 );
    }
    FC_LOG_AND_RETHROW()
 }

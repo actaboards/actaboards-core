@@ -44,8 +44,8 @@ BOOST_AUTO_TEST_CASE(get_account_history) {
       graphene::app::history_api hist_api(app);
 
       //account_id_type() do 3 ops
-      auto rsquaredchp1 = create_account("rsquaredchp1");
-      create_user_issued_asset("USD", rsquaredchp1, 0);
+      auto actanet = create_account("actanet");
+      create_user_issued_asset("USD", actanet, 0);
       create_account("dan");
       create_account("bob");
 

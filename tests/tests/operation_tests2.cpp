@@ -108,19 +108,19 @@ withdrawal_period_descriptor current_period(const withdraw_permission_object& pe
  */
 BOOST_AUTO_TEST_CASE( withdraw_permission_create )
 { try {
-   auto rsquaredchp1_private_key = generate_private_key("rsquaredchp1");
+   auto actanet_private_key = generate_private_key("actanet");
    auto dan_private_key = generate_private_key("dan");
-   account_id_type rsquaredchp1_id = create_account("rsquaredchp1", rsquaredchp1_private_key.get_public_key()).id;
+   account_id_type actanet_id = create_account("actanet", actanet_private_key.get_public_key()).id;
    account_id_type dan_id = create_account("dan", dan_private_key.get_public_key()).id;
 
-   transfer(account_id_type(), rsquaredchp1_id, asset(1000));
+   transfer(account_id_type(), actanet_id, asset(1000));
    generate_block();
    set_expiration( db, trx );
 
    {
       withdraw_permission_create_operation op;
       op.authorized_account = dan_id;
-      op.withdraw_from_account = rsquaredchp1_id;
+      op.withdraw_from_account = actanet_id;
       op.withdrawal_limit = asset(5);
       op.withdrawal_period_sec = fc::hours(1).to_seconds();
       op.periods_until_expiration = 5;
@@ -136,7 +136,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_create )
       REQUIRE_THROW_WITH_VALUE(op, withdrawal_period_sec, 1);
       trx.operations.back() = op;
    }
-   sign( trx, rsquaredchp1_private_key );
+   sign( trx, actanet_private_key );
    PUSH_TX( db, trx );
    trx.clear();
 } FC_LOG_AND_RETHROW() }
@@ -153,9 +153,9 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_test )
 { try {
    INVOKE(withdraw_permission_create);
 
-   auto rsquaredchp1_private_key = generate_private_key("rsquaredchp1");
+   auto actanet_private_key = generate_private_key("actanet");
    auto dan_private_key = generate_private_key("dan");
-   account_id_type rsquaredchp1_id = get_account("rsquaredchp1").id;
+   account_id_type actanet_id = get_account("actanet").id;
    account_id_type dan_id = get_account("dan").id;
    withdraw_permission_id_type permit;
    set_expiration( db, trx );
@@ -164,7 +164,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_test )
    {
       const withdraw_permission_object& permit_object = permit(db);
       BOOST_CHECK(permit_object.authorized_account == dan_id);
-      BOOST_CHECK(permit_object.withdraw_from_account == rsquaredchp1_id);
+      BOOST_CHECK(permit_object.withdraw_from_account == actanet_id);
       BOOST_CHECK(permit_object.period_start_time > db.head_block_time());
       first_start_time = permit_object.period_start_time;
       BOOST_CHECK(permit_object.withdrawal_limit == asset(5));
@@ -175,7 +175,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_test )
    {
       withdraw_permission_claim_operation op;
       op.withdraw_permission = permit;
-      op.withdraw_from_account = rsquaredchp1_id;
+      op.withdraw_from_account = actanet_id;
       op.withdraw_to_account = dan_id;
       op.amount_to_withdraw = asset(1);
       set_expiration( db, trx );
@@ -192,7 +192,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_test )
       REQUIRE_THROW_WITH_VALUE(op, withdraw_permission, withdraw_permission_id_type(5));
       REQUIRE_THROW_WITH_VALUE(op, withdraw_from_account, dan_id);
       REQUIRE_THROW_WITH_VALUE(op, withdraw_from_account, account_id_type());
-      REQUIRE_THROW_WITH_VALUE(op, withdraw_to_account, rsquaredchp1_id);
+      REQUIRE_THROW_WITH_VALUE(op, withdraw_to_account, actanet_id);
       REQUIRE_THROW_WITH_VALUE(op, withdraw_to_account, account_id_type());
       REQUIRE_THROW_WITH_VALUE(op, amount_to_withdraw, asset(10));
       REQUIRE_THROW_WITH_VALUE(op, amount_to_withdraw, asset(6));
@@ -217,13 +217,13 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_test )
    }
 
    // Account for two (2) claims of one (1) unit
-   BOOST_CHECK_EQUAL(get_balance(rsquaredchp1_id, asset_id_type()), 998);
+   BOOST_CHECK_EQUAL(get_balance(actanet_id, asset_id_type()), 998);
    BOOST_CHECK_EQUAL(get_balance(dan_id, asset_id_type()), 2);
 
    {
       const withdraw_permission_object& permit_object = permit(db);
       BOOST_CHECK(permit_object.authorized_account == dan_id);
-      BOOST_CHECK(permit_object.withdraw_from_account == rsquaredchp1_id);
+      BOOST_CHECK(permit_object.withdraw_from_account == actanet_id);
       BOOST_CHECK(permit_object.period_start_time == first_start_time);
       BOOST_CHECK(permit_object.withdrawal_limit == asset(5));
       BOOST_CHECK(permit_object.withdrawal_period_sec == fc::hours(1).to_seconds());
@@ -235,22 +235,22 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_test )
    }
 
    {
-      // Leave RSquaredCHP1 with one unit
-      transfer(rsquaredchp1_id, dan_id, asset(997));
+      // Leave actanet with one unit
+      transfer(actanet_id, dan_id, asset(997));
 
       // Attempt a withdrawal claim for units than available
       withdraw_permission_claim_operation op;
       op.withdraw_permission = permit;
-      op.withdraw_from_account = rsquaredchp1_id;
+      op.withdraw_from_account = actanet_id;
       op.withdraw_to_account = dan_id;
       op.amount_to_withdraw = asset(5);
       trx.operations.push_back(op);
       set_expiration( db, trx );
       sign( trx, dan_private_key );
-      //Throws because rsquaredchp1 doesn't have the money
+      //Throws because actanet doesn't have the money
       GRAPHENE_CHECK_THROW(PUSH_TX( db, trx ), fc::exception);
 
-      // Attempt a withdrawal claim for which rsquaredchp1 does have sufficient units
+      // Attempt a withdrawal claim for which actanet does have sufficient units
       op.amount_to_withdraw = asset(1);
       trx.clear();
       trx.operations = {op};
@@ -259,15 +259,15 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_test )
       PUSH_TX( db, trx );
    }
 
-   BOOST_CHECK_EQUAL(get_balance(rsquaredchp1_id, asset_id_type()), 0);
+   BOOST_CHECK_EQUAL(get_balance(actanet_id, asset_id_type()), 0);
    BOOST_CHECK_EQUAL(get_balance(dan_id, asset_id_type()), 1000);
    trx.clear();
-   transfer(dan_id, rsquaredchp1_id, asset(1000));
+   transfer(dan_id, actanet_id, asset(1000));
 
    {
       const withdraw_permission_object& permit_object = permit(db);
       BOOST_CHECK(permit_object.authorized_account == dan_id);
-      BOOST_CHECK(permit_object.withdraw_from_account == rsquaredchp1_id);
+      BOOST_CHECK(permit_object.withdraw_from_account == actanet_id);
       BOOST_CHECK(permit_object.period_start_time == first_start_time + permit_object.withdrawal_period_sec);
       BOOST_CHECK(permit_object.expiration == first_start_time + 5*permit_object.withdrawal_period_sec);
       BOOST_CHECK(permit_object.withdrawal_limit == asset(5));
@@ -280,7 +280,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_test )
    {
       withdraw_permission_claim_operation op;
       op.withdraw_permission = permit;
-      op.withdraw_from_account = rsquaredchp1_id;
+      op.withdraw_from_account = actanet_id;
       op.withdraw_to_account = dan_id;
       op.amount_to_withdraw = asset(5);
       trx.operations.push_back(op);
@@ -295,9 +295,9 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_nominal_case )
 { try {
    INVOKE(withdraw_permission_create);
 
-   auto rsquaredchp1_private_key = generate_private_key("rsquaredchp1");
+   auto actanet_private_key = generate_private_key("actanet");
    auto dan_private_key = generate_private_key("dan");
-   account_id_type rsquaredchp1_id = get_account("rsquaredchp1").id;
+   account_id_type actanet_id = get_account("actanet").id;
    account_id_type dan_id = get_account("dan").id;
    withdraw_permission_id_type permit;
 
@@ -313,7 +313,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_nominal_case )
       //wdump( (permit_object) );
       withdraw_permission_claim_operation op;
       op.withdraw_permission = permit;
-      op.withdraw_from_account = rsquaredchp1_id;
+      op.withdraw_from_account = actanet_id;
       op.withdraw_to_account = dan_id;
       op.amount_to_withdraw = asset(5);
       trx.operations.push_back(op);
@@ -334,7 +334,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_nominal_case )
          break;
    }
 
-   BOOST_CHECK_EQUAL(get_balance(rsquaredchp1_id, asset_id_type()), 975);
+   BOOST_CHECK_EQUAL(get_balance(actanet_id, asset_id_type()), 975);
    BOOST_CHECK_EQUAL(get_balance(dan_id, asset_id_type()), 25);
 } FC_LOG_AND_RETHROW() }
 
@@ -360,9 +360,9 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_whitelist_asset_test )
       int blocks = 0;
       set_expiration( db, trx );
 
-      ACTORS( (izzy)(dan)(rsquaredchp1) );
+      ACTORS( (izzy)(dan)(actanet) );
 
-      const asset_id_type uia_id = create_user_issued_asset( "ADVANCED", rsquaredchp1_id(db), white_list ).id;
+      const asset_id_type uia_id = create_user_issued_asset( "ADVANCED", actanet_id(db), white_list ).id;
 
       issue_uia( izzy_id, asset(1000, uia_id) );
 
@@ -370,10 +370,10 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_whitelist_asset_test )
       {
          BOOST_TEST_MESSAGE( "Changing the whitelist authority" );
          asset_update_operation uop;
-         uop.issuer = rsquaredchp1_id;
+         uop.issuer = actanet_id;
          uop.asset_to_update = uia_id;
          uop.new_options = uia_id(db).options;
-         uop.new_options.whitelist_authorities.insert(rsquaredchp1_id);
+         uop.new_options.whitelist_authorities.insert(actanet_id);
          trx.operations.push_back(uop);
          PUSH_TX( db, trx, ~0 );
          trx.operations.clear();
@@ -381,10 +381,10 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_whitelist_asset_test )
 
       // Add dan to whitelist
       {
-         upgrade_to_lifetime_member( rsquaredchp1_id );
+         upgrade_to_lifetime_member( actanet_id );
 
          account_whitelist_operation wop;
-         wop.authorizing_account = rsquaredchp1_id;
+         wop.authorizing_account = actanet_id;
          wop.account_to_list = dan_id;
          wop.new_listing = account_whitelist_operation::white_listed;
          trx.operations.push_back( wop );
@@ -459,9 +459,9 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_incremental_case )
     time_point_sec expected_first_period_start_time = db.head_block_time() + db.get_global_properties().parameters.block_interval*5; // Hard-coded to synchronize with withdraw_permission_create()
     uint64_t expected_period_duration_seconds = fc::hours(1).to_seconds(); // Hard-coded to synchronize with withdraw_permission_create()
 
-    auto rsquaredchp1_private_key = generate_private_key("rsquaredchp1");
+    auto actanet_private_key = generate_private_key("actanet");
     auto dan_private_key = generate_private_key("dan");
-    account_id_type rsquaredchp1_id = get_account("rsquaredchp1").id;
+    account_id_type actanet_id = get_account("actanet").id;
     account_id_type dan_id = get_account("dan").id;
     withdraw_permission_id_type permit;
 
@@ -492,7 +492,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_incremental_case )
         // Claim
         withdraw_permission_claim_operation op;
         op.withdraw_permission = permit;
-        op.withdraw_from_account = rsquaredchp1_id;
+        op.withdraw_from_account = actanet_id;
         op.withdraw_to_account = dan_id;
         op.amount_to_withdraw = asset(4);
         trx.operations.push_back(op);
@@ -529,7 +529,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_incremental_case )
         // Claim
         withdraw_permission_claim_operation op;
         op.withdraw_permission = permit;
-        op.withdraw_from_account = rsquaredchp1_id;
+        op.withdraw_from_account = actanet_id;
         op.withdraw_to_account = dan_id;
         op.amount_to_withdraw = asset(1);
         trx.operations.push_back(op);
@@ -589,7 +589,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_incremental_case )
         // Claim
         withdraw_permission_claim_operation op;
         op.withdraw_permission = permit;
-        op.withdraw_from_account = rsquaredchp1_id;
+        op.withdraw_from_account = actanet_id;
         op.withdraw_to_account = dan_id;
         op.amount_to_withdraw = asset(5);
         trx.operations.push_back(op);
@@ -626,7 +626,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_incremental_case )
         // Claim
         withdraw_permission_claim_operation op;
         op.withdraw_permission = permit;
-        op.withdraw_from_account = rsquaredchp1_id;
+        op.withdraw_from_account = actanet_id;
         op.withdraw_to_account = dan_id;
         op.amount_to_withdraw = asset(3);
         trx.operations.push_back(op);
@@ -653,7 +653,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_incremental_case )
     // Withdrawal periods completed
     BOOST_CHECK(db.find_object(permit) == nullptr);
 
-    BOOST_CHECK_EQUAL(get_balance(rsquaredchp1_id, asset_id_type()), 987);
+    BOOST_CHECK_EQUAL(get_balance(actanet_id, asset_id_type()), 987);
     BOOST_CHECK_EQUAL(get_balance(dan_id, asset_id_type()), 13);
 } FC_LOG_AND_RETHROW() }
 
@@ -661,8 +661,8 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_update )
 { try {
    INVOKE(withdraw_permission_create);
 
-   auto rsquaredchp1_private_key = generate_private_key("rsquaredchp1");
-   account_id_type rsquaredchp1_id = get_account("rsquaredchp1").id;
+   auto actanet_private_key = generate_private_key("actanet");
+   account_id_type actanet_id = get_account("actanet").id;
    account_id_type dan_id = get_account("dan").id;
    withdraw_permission_id_type permit;
    set_expiration( db, trx );
@@ -671,7 +671,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_update )
       withdraw_permission_update_operation op;
       op.permission_to_update = permit;
       op.authorized_account = dan_id;
-      op.withdraw_from_account = rsquaredchp1_id;
+      op.withdraw_from_account = actanet_id;
       op.periods_until_expiration = 2;
       op.period_start_time = db.head_block_time() + 10;
       op.withdrawal_period_sec = 10;
@@ -685,14 +685,14 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_update )
       REQUIRE_THROW_WITH_VALUE(op, authorized_account, account_id_type(0));
       REQUIRE_THROW_WITH_VALUE(op, period_start_time, db.head_block_time() - 50);
       trx.operations.back() = op;
-      sign( trx, rsquaredchp1_private_key );
+      sign( trx, actanet_private_key );
       PUSH_TX( db, trx );
    }
 
    {
       const withdraw_permission_object& permit_object = db.get(permit);
       BOOST_CHECK(permit_object.authorized_account == dan_id);
-      BOOST_CHECK(permit_object.withdraw_from_account == rsquaredchp1_id);
+      BOOST_CHECK(permit_object.withdraw_from_account == actanet_id);
       BOOST_CHECK(permit_object.period_start_time == db.head_block_time() + 10);
       BOOST_CHECK(permit_object.withdrawal_limit == asset(12));
       BOOST_CHECK(permit_object.withdrawal_period_sec == 10);
@@ -706,10 +706,10 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_delete )
 
    withdraw_permission_delete_operation op;
    op.authorized_account = get_account("dan").id;
-   op.withdraw_from_account = get_account("rsquaredchp1").id;
+   op.withdraw_from_account = get_account("actanet").id;
    set_expiration( db, trx );
    trx.operations.push_back(op);
-   sign( trx, generate_private_key("rsquaredchp1" ));
+   sign( trx, generate_private_key("actanet" ));
    PUSH_TX( db, trx );
 } FC_LOG_AND_RETHROW() }
 
@@ -747,40 +747,40 @@ BOOST_AUTO_TEST_CASE( witness_create )
    const auto& wit_key_cache = wtplugin->get_witness_key_cache();
 
    // setup test account
-   ACTOR(rsquaredchp1);
-   upgrade_to_lifetime_member(rsquaredchp1_id);
+   ACTOR(actanet);
+   upgrade_to_lifetime_member(actanet_id);
    trx.clear();
 
    // create witness
-   witness_id_type rsquaredchp1_witness_id = create_witness(rsquaredchp1_id, rsquaredchp1_private_key, skip).id;
+   witness_id_type actanet_witness_id = create_witness(actanet_id, actanet_private_key, skip).id;
 
-   // rsquaredchp1 should be in the cache
-   BOOST_CHECK_EQUAL( caching_witnesses.count(rsquaredchp1_witness_id), 1u );
+   // actanet should be in the cache
+   BOOST_CHECK_EQUAL( caching_witnesses.count(actanet_witness_id), 1u );
 
-   // rsquaredchp1's key in the cache should still be null before a new block is generated
-   auto rsquaredchp1_itr = wit_key_cache.find( rsquaredchp1_witness_id );
-   BOOST_CHECK( rsquaredchp1_itr != wit_key_cache.end() && !rsquaredchp1_itr->second.valid() );
+   // actanet's key in the cache should still be null before a new block is generated
+   auto actanet_itr = wit_key_cache.find( actanet_witness_id );
+   BOOST_CHECK( actanet_itr != wit_key_cache.end() && !actanet_itr->second.valid() );
 
-   // Give rsquaredchp1 some voting stake
-   transfer(committee_account, rsquaredchp1_id, asset(10000000));
+   // Give actanet some voting stake
+   transfer(committee_account, actanet_id, asset(10000000));
    generate_block(skip);
 
-   // rsquaredchp1 should be a witness now
-   BOOST_REQUIRE( db.find( rsquaredchp1_witness_id ) );
-   // rsquaredchp1's key in the cache should have been stored now
-   rsquaredchp1_itr = wit_key_cache.find( rsquaredchp1_witness_id );
-   BOOST_CHECK( rsquaredchp1_itr != wit_key_cache.end() && rsquaredchp1_itr->second.valid()
-                && *rsquaredchp1_itr->second == rsquaredchp1_private_key.get_public_key() );
+   // actanet should be a witness now
+   BOOST_REQUIRE( db.find( actanet_witness_id ) );
+   // actanet's key in the cache should have been stored now
+   actanet_itr = wit_key_cache.find( actanet_witness_id );
+   BOOST_CHECK( actanet_itr != wit_key_cache.end() && actanet_itr->second.valid()
+                && *actanet_itr->second == actanet_private_key.get_public_key() );
 
    // undo the block
    db.pop_block();
 
-   // rsquaredchp1 should not be a witness now
-   BOOST_REQUIRE( !db.find( rsquaredchp1_witness_id ) );
-   // rsquaredchp1's key in the cache should still be valid, since witness plugin doesn't get notified on popped block
-   rsquaredchp1_itr = wit_key_cache.find( rsquaredchp1_witness_id );
-   BOOST_CHECK( rsquaredchp1_itr != wit_key_cache.end() && rsquaredchp1_itr->second.valid()
-                && *rsquaredchp1_itr->second == rsquaredchp1_private_key.get_public_key() );
+   // actanet should not be a witness now
+   BOOST_REQUIRE( !db.find( actanet_witness_id ) );
+   // actanet's key in the cache should still be valid, since witness plugin doesn't get notified on popped block
+   actanet_itr = wit_key_cache.find( actanet_witness_id );
+   BOOST_CHECK( actanet_itr != wit_key_cache.end() && actanet_itr->second.valid()
+                && *actanet_itr->second == actanet_private_key.get_public_key() );
 
    // copy popped transactions
    auto popped_tx = db._popped_tx;
@@ -788,10 +788,10 @@ BOOST_AUTO_TEST_CASE( witness_create )
    // generate another block
    generate_block(skip);
 
-   // rsquaredchp1 should not be a witness now
-   BOOST_REQUIRE( !db.find( rsquaredchp1_witness_id ) );
-   // rsquaredchp1's key in the cache should be null now
-   BOOST_CHECK( rsquaredchp1_itr != wit_key_cache.end() && !rsquaredchp1_itr->second.valid() );
+   // actanet should not be a witness now
+   BOOST_REQUIRE( !db.find( actanet_witness_id ) );
+   // actanet's key in the cache should be null now
+   BOOST_CHECK( actanet_itr != wit_key_cache.end() && !actanet_itr->second.valid() );
 
    // push the popped tx
    for( const auto& tx : popped_tx )
@@ -802,21 +802,21 @@ BOOST_AUTO_TEST_CASE( witness_create )
    generate_block(skip);
    set_expiration( db, trx );
 
-   // rsquaredchp1 should be a witness now
-   BOOST_REQUIRE( db.find( rsquaredchp1_witness_id ) );
-   // rsquaredchp1's key in the cache should have been stored now
-   rsquaredchp1_itr = wit_key_cache.find( rsquaredchp1_witness_id );
-   BOOST_CHECK( rsquaredchp1_itr != wit_key_cache.end() && rsquaredchp1_itr->second.valid()
-                && *rsquaredchp1_itr->second == rsquaredchp1_private_key.get_public_key() );
+   // actanet should be a witness now
+   BOOST_REQUIRE( db.find( actanet_witness_id ) );
+   // actanet's key in the cache should have been stored now
+   actanet_itr = wit_key_cache.find( actanet_witness_id );
+   BOOST_CHECK( actanet_itr != wit_key_cache.end() && actanet_itr->second.valid()
+                && *actanet_itr->second == actanet_private_key.get_public_key() );
 
    // generate a new key
-   fc::ecc::private_key new_signing_key = fc::ecc::private_key::regenerate(fc::digest("rsquaredchp1_new"));
+   fc::ecc::private_key new_signing_key = fc::ecc::private_key::regenerate(fc::digest("actanet_new"));
 
-   // update rsquaredchp1's block signing key
+   // update actanet's block signing key
    {
       witness_update_operation wuop;
-      wuop.witness_account = rsquaredchp1_id;
-      wuop.witness = rsquaredchp1_witness_id;
+      wuop.witness_account = actanet_id;
+      wuop.witness = actanet_witness_id;
       wuop.new_signing_key = new_signing_key.get_public_key();
       signed_transaction wu_trx;
       wu_trx.operations.push_back( wuop );
@@ -824,47 +824,47 @@ BOOST_AUTO_TEST_CASE( witness_create )
       PUSH_TX( db, wu_trx, skip );
    }
 
-   // rsquaredchp1's key in the cache should still be old key
-   rsquaredchp1_itr = wit_key_cache.find( rsquaredchp1_witness_id );
-   BOOST_CHECK( rsquaredchp1_itr != wit_key_cache.end() && rsquaredchp1_itr->second.valid()
-                && *rsquaredchp1_itr->second == rsquaredchp1_private_key.get_public_key() );
+   // actanet's key in the cache should still be old key
+   actanet_itr = wit_key_cache.find( actanet_witness_id );
+   BOOST_CHECK( actanet_itr != wit_key_cache.end() && actanet_itr->second.valid()
+                && *actanet_itr->second == actanet_private_key.get_public_key() );
 
    // generate another block
    generate_block(skip);
 
-   // rsquaredchp1's key in the cache should have changed to new key
-   rsquaredchp1_itr = wit_key_cache.find( rsquaredchp1_witness_id );
-   BOOST_CHECK( rsquaredchp1_itr != wit_key_cache.end() && rsquaredchp1_itr->second.valid()
-                && *rsquaredchp1_itr->second == new_signing_key.get_public_key() );
+   // actanet's key in the cache should have changed to new key
+   actanet_itr = wit_key_cache.find( actanet_witness_id );
+   BOOST_CHECK( actanet_itr != wit_key_cache.end() && actanet_itr->second.valid()
+                && *actanet_itr->second == new_signing_key.get_public_key() );
 
    // undo the block
    db.pop_block();
 
-   // rsquaredchp1's key in the cache should still be new key, since witness plugin doesn't get notified on popped block
-   rsquaredchp1_itr = wit_key_cache.find( rsquaredchp1_witness_id );
-   BOOST_CHECK( rsquaredchp1_itr != wit_key_cache.end() && rsquaredchp1_itr->second.valid()
-                && *rsquaredchp1_itr->second == new_signing_key.get_public_key() );
+   // actanet's key in the cache should still be new key, since witness plugin doesn't get notified on popped block
+   actanet_itr = wit_key_cache.find( actanet_witness_id );
+   BOOST_CHECK( actanet_itr != wit_key_cache.end() && actanet_itr->second.valid()
+                && *actanet_itr->second == new_signing_key.get_public_key() );
 
    // generate another block
    generate_block(skip);
 
-   // rsquaredchp1's key in the cache should be old key now
-   rsquaredchp1_itr = wit_key_cache.find( rsquaredchp1_witness_id );
-   BOOST_CHECK( rsquaredchp1_itr != wit_key_cache.end() && rsquaredchp1_itr->second.valid()
-                && *rsquaredchp1_itr->second == rsquaredchp1_private_key.get_public_key() );
+   // actanet's key in the cache should be old key now
+   actanet_itr = wit_key_cache.find( actanet_witness_id );
+   BOOST_CHECK( actanet_itr != wit_key_cache.end() && actanet_itr->second.valid()
+                && *actanet_itr->second == actanet_private_key.get_public_key() );
 
    // voting
    {
       account_update_operation op;
-      op.account = rsquaredchp1_id;
-      op.new_options = rsquaredchp1_id(db).options;
-      op.new_options->votes.insert(rsquaredchp1_witness_id(db).vote_id);
+      op.account = actanet_id;
+      op.new_options = actanet_id(db).options;
+      op.new_options->votes.insert(actanet_witness_id(db).vote_id);
       op.new_options->num_witness = std::count_if(op.new_options->votes.begin(), op.new_options->votes.end(),
                                                   [](vote_id_type id) { return id.type() == vote_id_type::witness; });
       op.new_options->num_committee = std::count_if(op.new_options->votes.begin(), op.new_options->votes.end(),
                                                     [](vote_id_type id) { return id.type() == vote_id_type::committee; });
       trx.operations.push_back(op);
-      sign( trx, rsquaredchp1_private_key );
+      sign( trx, actanet_private_key );
       PUSH_TX( db, trx );
       trx.clear();
    }
@@ -873,7 +873,7 @@ BOOST_AUTO_TEST_CASE( witness_create )
    const auto& witnesses = db.get_global_properties().active_witnesses;
 
    // make sure we're in active_witnesses
-   auto itr = std::find(witnesses.begin(), witnesses.end(), rsquaredchp1_witness_id);
+   auto itr = std::find(witnesses.begin(), witnesses.end(), actanet_witness_id);
    BOOST_CHECK(itr != witnesses.end());
 
    // generate blocks until we are at the beginning of a round
@@ -887,7 +887,7 @@ BOOST_AUTO_TEST_CASE( witness_create )
    for( size_t i=0, n=witnesses.size()*2; i<n; i++ )
    {
       signed_block block = generate_block();
-      if( block.witness == rsquaredchp1_witness_id )
+      if( block.witness == actanet_witness_id )
          produced++;
    }
    BOOST_CHECK_GE( produced, 1 );
@@ -898,13 +898,13 @@ BOOST_AUTO_TEST_CASE( witness_create )
 BOOST_AUTO_TEST_CASE( worker_create_test )
 { try {
    set_expiration( db, trx );
-   ACTOR(rsquaredchp1);
-   upgrade_to_lifetime_member(rsquaredchp1_id);
+   ACTOR(actanet);
+   upgrade_to_lifetime_member(actanet_id);
    generate_block();
 
    {
       worker_create_operation op;
-      op.owner = rsquaredchp1_id;
+      op.owner = actanet_id;
       op.daily_pay = 1000;
       op.initializer = vesting_balance_worker_initializer(1);
       op.work_begin_date = db.get_dynamic_global_properties().next_maintenance_time + 10;
@@ -917,19 +917,19 @@ BOOST_AUTO_TEST_CASE( worker_create_test )
       REQUIRE_THROW_WITH_VALUE(op, work_begin_date, db.head_block_time() - 10);
       REQUIRE_THROW_WITH_VALUE(op, work_end_date, op.work_begin_date);
       trx.operations.back() = op;
-      sign( trx, rsquaredchp1_private_key );
+      sign( trx, actanet_private_key );
       PUSH_TX( db, trx );
    }
 
    const worker_object& worker = worker_id_type()(db);
-   BOOST_CHECK(worker.worker_account == rsquaredchp1_id);
+   BOOST_CHECK(worker.worker_account == actanet_id);
    BOOST_CHECK(worker.daily_pay == 1000);
    BOOST_CHECK(worker.work_begin_date == db.get_dynamic_global_properties().next_maintenance_time + 10);
    BOOST_CHECK(worker.work_end_date == db.get_dynamic_global_properties().next_maintenance_time + 10 + fc::days(2));
    BOOST_CHECK(worker.vote_for.type() == vote_id_type::worker);
 
    const vesting_balance_object& balance = worker.worker.get<vesting_balance_worker_type>().balance(db);
-   BOOST_CHECK(balance.owner == rsquaredchp1_id);
+   BOOST_CHECK(balance.owner == actanet_id);
    BOOST_CHECK(balance.balance == asset(0));
    BOOST_CHECK(balance.policy.get<cdd_vesting_policy>().vesting_seconds == fc::days(1).to_seconds());
 } FC_LOG_AND_RETHROW() }
@@ -940,14 +940,14 @@ BOOST_AUTO_TEST_CASE( worker_pay_test )
    generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
    enable_workers_payments();
    INVOKE(worker_create_test);
-   GET_ACTOR(rsquaredchp1);
-   transfer(committee_account, rsquaredchp1_id, asset(100000));
+   GET_ACTOR(actanet);
+   transfer(committee_account, actanet_id, asset(100000));
    generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
 
    {
       account_update_operation op;
-      op.account = rsquaredchp1_id;
-      op.new_options = rsquaredchp1_id(db).options;
+      op.account = actanet_id;
+      op.new_options = actanet_id(db).options;
       op.new_options->votes.insert(worker_id_type()(db).vote_for);
       trx.operations.push_back(op);
       set_expiration( db, trx );
@@ -986,17 +986,17 @@ BOOST_AUTO_TEST_CASE( worker_pay_test )
       vesting_balance_withdraw_operation op;
       op.vesting_balance = worker_id_type()(db).worker.get<vesting_balance_worker_type>().balance;
       op.amount = asset(500);
-      op.owner = rsquaredchp1_id;
+      op.owner = actanet_id;
       set_expiration( db, trx );
       trx.operations.push_back(op);
-      sign( trx,  rsquaredchp1_private_key );
+      sign( trx,  actanet_private_key );
       PUSH_TX( db, trx );
       trx.clear_signatures();
       REQUIRE_THROW_WITH_VALUE(op, amount, asset(1));
       trx.clear();
    }
 
-   BOOST_CHECK_EQUAL(get_balance(rsquaredchp1_id, asset_id_type()), 100500);
+   BOOST_CHECK_EQUAL(get_balance(actanet_id, asset_id_type()), 100500);
    BOOST_CHECK_EQUAL(worker_id_type()(db).worker.get<vesting_balance_worker_type>().balance(db).balance.amount.value, 500);
    generate_blocks(db.head_block_time() + fc::hours(12));
    BOOST_CHECK_EQUAL(worker_id_type()(db).worker.get<vesting_balance_worker_type>().balance(db).balance.amount.value, 1500);
@@ -1005,7 +1005,7 @@ BOOST_AUTO_TEST_CASE( worker_pay_test )
       vesting_balance_withdraw_operation op;
       op.vesting_balance = worker_id_type()(db).worker.get<vesting_balance_worker_type>().balance;
       op.amount = asset(1500);
-      op.owner = rsquaredchp1_id;
+      op.owner = actanet_id;
       set_expiration( db, trx );
       trx.operations.push_back(op);
       REQUIRE_THROW_WITH_VALUE(op, amount, asset(1501));
@@ -1015,13 +1015,13 @@ BOOST_AUTO_TEST_CASE( worker_pay_test )
       set_expiration( db, trx );
       REQUIRE_THROW_WITH_VALUE(op, amount, asset(2000));
       trx.operations.back() = op;
-      sign( trx,  rsquaredchp1_private_key );
+      sign( trx,  actanet_private_key );
       PUSH_TX( db, trx );
       trx.clear_signatures();
       trx.clear();
    }
 
-   BOOST_CHECK_EQUAL(get_balance(rsquaredchp1_id, asset_id_type()), 102000);
+   BOOST_CHECK_EQUAL(get_balance(actanet_id, asset_id_type()), 102000);
    BOOST_CHECK_EQUAL(worker_id_type()(db).worker.get<vesting_balance_worker_type>().balance(db).balance.amount.value, 0);
 } FC_LOG_AND_RETHROW() }
 
@@ -1031,15 +1031,15 @@ BOOST_AUTO_TEST_CASE( disable_worker_payments_test )
    generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
    enable_workers_payments(); // all worker payments are allowed
    set_expiration( db, trx );
-   ACTOR(rsquaredchp1);
-   upgrade_to_lifetime_member(rsquaredchp1_id);
-   transfer(committee_account, rsquaredchp1_id, asset(100000));
+   ACTOR(actanet);
+   upgrade_to_lifetime_member(actanet_id);
+   transfer(committee_account, actanet_id, asset(100000));
    generate_block();
 
    // Create long time worker
    {
       worker_create_operation op;
-      op.owner = rsquaredchp1_id;
+      op.owner = actanet_id;
       op.daily_pay = 10;
       op.initializer = vesting_balance_worker_initializer(1);
       op.work_begin_date = db.head_block_time() + 10;
@@ -1047,7 +1047,7 @@ BOOST_AUTO_TEST_CASE( disable_worker_payments_test )
       trx.clear();
       set_expiration( db, trx );
       trx.operations.push_back(op);
-      sign( trx, rsquaredchp1_private_key );
+      sign( trx, actanet_private_key );
       PUSH_TX( db, trx );
    }
 
@@ -1094,9 +1094,9 @@ BOOST_AUTO_TEST_CASE( worker_majority_test )
    generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
    enable_workers_payments(); // all worker payments are allowed
    set_expiration( db, trx );
-   ACTOR(rsquaredchp1);
-   upgrade_to_lifetime_member(rsquaredchp1_id);
-   transfer(committee_account, rsquaredchp1_id, asset(100000));
+   ACTOR(actanet);
+   upgrade_to_lifetime_member(actanet_id);
+   transfer(committee_account, actanet_id, asset(100000));
    generate_block();
 
    worker_id_type w1, w2;
@@ -1104,7 +1104,7 @@ BOOST_AUTO_TEST_CASE( worker_majority_test )
    // Create workers
    {  // the 1st Worker
       worker_create_operation op;
-      op.owner = rsquaredchp1_id;
+      op.owner = actanet_id;
       op.daily_pay = 10;
       op.initializer = vesting_balance_worker_initializer(1);
       op.work_begin_date = db.head_block_time() + 10;
@@ -1112,14 +1112,14 @@ BOOST_AUTO_TEST_CASE( worker_majority_test )
       trx.clear();
       set_expiration( db, trx );
       trx.operations.push_back(op);
-      sign( trx, rsquaredchp1_private_key );
+      sign( trx, actanet_private_key );
       processed_transaction ptx = PUSH_TX( db, trx );
       w1 = ptx.operation_results[0].get<object_id_type>();
    }
 
    {  // the 2nd Worker
       worker_create_operation op;
-      op.owner = rsquaredchp1_id;
+      op.owner = actanet_id;
       op.daily_pay = 6;
       op.initializer = vesting_balance_worker_initializer(1);
       op.work_begin_date = db.head_block_time() + 10;
@@ -1127,7 +1127,7 @@ BOOST_AUTO_TEST_CASE( worker_majority_test )
       trx.clear();
       set_expiration( db, trx );
       trx.operations.push_back(op);
-      sign( trx, rsquaredchp1_private_key );
+      sign( trx, actanet_private_key );
       processed_transaction ptx = PUSH_TX( db, trx );
       w2 = ptx.operation_results[0].get<object_id_type>();
    }
@@ -1196,15 +1196,15 @@ BOOST_AUTO_TEST_CASE( worker_majority_test )
 BOOST_AUTO_TEST_CASE( worker_deadline_test )
 { try {
    INVOKE(worker_create_test);
-   GET_ACTOR(rsquaredchp1);
+   GET_ACTOR(actanet);
    vote_for_committee_and_witnesses(INITIAL_COMMITTEE_MEMBER_COUNT, INITIAL_WITNESS_COUNT);
    generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
-   transfer(committee_account, rsquaredchp1_id, asset(100000));
+   transfer(committee_account, actanet_id, asset(100000));
 
-   {  // RSquaredCHP1 can vote
+   {  // actanet can vote
       account_update_operation op;
-      op.account = rsquaredchp1_id;
-      op.new_options = rsquaredchp1_id(db).options;
+      op.account = actanet_id;
+      op.new_options = actanet_id(db).options;
       op.new_options->votes.insert(worker_id_type()(db).vote_for);
       trx.operations.push_back(op);
       PUSH_TX( db, trx, ~0 );
@@ -1238,10 +1238,10 @@ BOOST_AUTO_TEST_CASE( worker_deadline_test )
       trx.clear();
    }
 
-   {  // RSquaredCHP1 can't withdraw his vote
+   {  // actanet can't withdraw his vote
       account_update_operation op;
-      op.account = rsquaredchp1_id;
-      op.new_options = rsquaredchp1_id(db).options;
+      op.account = actanet_id;
+      op.new_options = actanet_id(db).options;
       op.new_options->votes.erase(worker_id_type()(db).vote_for);
       trx.operations.push_back(op);
       GRAPHENE_REQUIRE_THROW( PUSH_TX( db, trx, ~0 ), fc::exception );
@@ -1252,8 +1252,8 @@ BOOST_AUTO_TEST_CASE( worker_deadline_test )
 
 BOOST_AUTO_TEST_CASE( refund_worker_test )
 {try{
-   ACTOR(rsquaredchp1);
-   upgrade_to_lifetime_member(rsquaredchp1_id);
+   ACTOR(actanet);
+   upgrade_to_lifetime_member(actanet_id);
    vote_for_committee_and_witnesses(INITIAL_COMMITTEE_MEMBER_COUNT, INITIAL_WITNESS_COUNT);
    generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
    enable_workers_payments();
@@ -1261,7 +1261,7 @@ BOOST_AUTO_TEST_CASE( refund_worker_test )
 
    {
       worker_create_operation op;
-      op.owner = rsquaredchp1_id;
+      op.owner = actanet_id;
       op.daily_pay = 1000;
       op.initializer = refund_worker_initializer();
       op.work_begin_date = db.head_block_time() + 10;
@@ -1274,24 +1274,24 @@ BOOST_AUTO_TEST_CASE( refund_worker_test )
       REQUIRE_THROW_WITH_VALUE(op, work_begin_date, db.head_block_time() - 10);
       REQUIRE_THROW_WITH_VALUE(op, work_end_date, op.work_begin_date);
       trx.operations.back() = op;
-      sign( trx,  rsquaredchp1_private_key );
+      sign( trx,  actanet_private_key );
       PUSH_TX( db, trx );
       trx.clear();
    }
 
    const worker_object& worker = worker_id_type()(db);
-   BOOST_CHECK(worker.worker_account == rsquaredchp1_id);
+   BOOST_CHECK(worker.worker_account == actanet_id);
    BOOST_CHECK(worker.daily_pay == 1000);
    BOOST_CHECK(worker.work_begin_date == db.head_block_time() + 10);
    BOOST_CHECK(worker.work_end_date == db.head_block_time() + 10 + fc::days(2));
    BOOST_CHECK(worker.vote_for.type() == vote_id_type::worker);
 
-   transfer(committee_account, rsquaredchp1_id, asset(100000));
+   transfer(committee_account, actanet_id, asset(100000));
 
    {
       account_update_operation op;
-      op.account = rsquaredchp1_id;
-      op.new_options = rsquaredchp1_id(db).options;
+      op.account = actanet_id;
+      op.new_options = actanet_id(db).options;
       op.new_options->votes.insert(worker_id_type()(db).vote_for);
       trx.operations.push_back(op);
       PUSH_TX( db, trx, ~0 );
@@ -1337,8 +1337,8 @@ BOOST_AUTO_TEST_CASE( refund_worker_test )
 
 BOOST_AUTO_TEST_CASE( burn_worker_test )
 {try{
-   ACTOR(rsquaredchp1);
-   upgrade_to_lifetime_member(rsquaredchp1_id);
+   ACTOR(actanet);
+   upgrade_to_lifetime_member(actanet_id);
    vote_for_committee_and_witnesses(INITIAL_COMMITTEE_MEMBER_COUNT, INITIAL_WITNESS_COUNT);
    generate_block();
    generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
@@ -1347,7 +1347,7 @@ BOOST_AUTO_TEST_CASE( burn_worker_test )
 
    {
       worker_create_operation op;
-      op.owner = rsquaredchp1_id;
+      op.owner = actanet_id;
       op.daily_pay = 1000;
       op.initializer = burn_worker_initializer();
       op.work_begin_date = db.head_block_time() + 10;
@@ -1360,24 +1360,24 @@ BOOST_AUTO_TEST_CASE( burn_worker_test )
       REQUIRE_THROW_WITH_VALUE(op, work_begin_date, db.head_block_time() - 10);
       REQUIRE_THROW_WITH_VALUE(op, work_end_date, op.work_begin_date);
       trx.operations.back() = op;
-      sign( trx,  rsquaredchp1_private_key );
+      sign( trx,  actanet_private_key );
       PUSH_TX( db, trx );
       trx.clear();
    }
 
    const worker_object& worker = worker_id_type()(db);
-   BOOST_CHECK(worker.worker_account == rsquaredchp1_id);
+   BOOST_CHECK(worker.worker_account == actanet_id);
    BOOST_CHECK(worker.daily_pay == 1000);
    BOOST_CHECK(worker.work_begin_date == db.head_block_time() + 10);
    BOOST_CHECK(worker.work_end_date == db.head_block_time() + 10 + fc::days(2));
    BOOST_CHECK(worker.vote_for.type() == vote_id_type::worker);
 
-   transfer(committee_account, rsquaredchp1_id, asset(100000));
+   transfer(committee_account, actanet_id, asset(100000));
 
    {
       account_update_operation op;
-      op.account = rsquaredchp1_id;
-      op.new_options = rsquaredchp1_id(db).options;
+      op.account = actanet_id;
+      op.new_options = actanet_id(db).options;
       op.new_options->votes.insert(worker_id_type()(db).vote_for);
       trx.operations.push_back(op);
       PUSH_TX( db, trx, ~0 );
@@ -1425,24 +1425,24 @@ BOOST_AUTO_TEST_CASE( assert_op_test )
 {
    try {
    // create some objects
-   auto rsquaredchp1_private_key = generate_private_key("rsquaredchp1");
-   public_key_type rsquaredchp1_public_key = rsquaredchp1_private_key.get_public_key();
-   account_id_type rsquaredchp1_id = create_account("rsquaredchp1", rsquaredchp1_public_key).id;
+   auto actanet_private_key = generate_private_key("actanet");
+   public_key_type actanet_public_key = actanet_private_key.get_public_key();
+   account_id_type actanet_id = create_account("actanet", actanet_public_key).id;
 
    assert_operation op;
 
-   // rsquaredchp1 checks that his public key is equal to the given value.
-   op.fee_paying_account = rsquaredchp1_id;
-   op.predicates.emplace_back(account_name_eq_lit_predicate{ rsquaredchp1_id, "rsquaredchp1" });
+   // actanet checks that his public key is equal to the given value.
+   op.fee_paying_account = actanet_id;
+   op.predicates.emplace_back(account_name_eq_lit_predicate{ actanet_id, "actanet" });
    trx.operations.push_back(op);
-   sign( trx, rsquaredchp1_private_key );
+   sign( trx, actanet_private_key );
    PUSH_TX( db, trx );
 
-   // rsquaredchp1 checks that his public key is not equal to the given value (fail)
+   // actanet checks that his public key is not equal to the given value (fail)
    trx.clear();
-   op.predicates.emplace_back(account_name_eq_lit_predicate{ rsquaredchp1_id, "dan" });
+   op.predicates.emplace_back(account_name_eq_lit_predicate{ actanet_id, "dan" });
    trx.operations.push_back(op);
-   sign( trx, rsquaredchp1_private_key );
+   sign( trx, actanet_private_key );
    GRAPHENE_CHECK_THROW( PUSH_TX( db, trx ), fc::exception );
    } FC_LOG_AND_RETHROW()
 }
@@ -1772,12 +1772,12 @@ BOOST_AUTO_TEST_CASE( vbo_withdraw_different )
 {
    try
    {
-      ACTORS((alice)(rsquaredchp1));
+      ACTORS((alice)(actanet));
       // don't pay witnesses so we have some worker budget to work with
 
       // transfer(account_id_type(), alice_id, asset(1000));
 
-      asset_id_type stuff_id = create_user_issued_asset( "STUFF", rsquaredchp1_id(db), 0 ).id;
+      asset_id_type stuff_id = create_user_issued_asset( "STUFF", actanet_id(db), 0 ).id;
       issue_uia( alice_id, asset( 1000, stuff_id ) );
 
       // deposit STUFF with linear vesting policy
@@ -1845,18 +1845,18 @@ BOOST_AUTO_TEST_CASE( vbo_withdraw_different )
 
 BOOST_AUTO_TEST_CASE( top_n_special )
 {
-   ACTORS( (alice)(bob)(chloe)(dan)(rsquaredchp1)(stan) );
+   ACTORS( (alice)(bob)(chloe)(dan)(actanet)(stan) );
 
    try
    {
       {
          //
-         // RSquaredCHP1 (issuer)
+         // actanet (issuer)
          // Stan (special authority)
          // Alice, Bob, Chloe, Dan (ABCD)
          //
 
-         asset_id_type topn_id = create_user_issued_asset( "TOPN", rsquaredchp1_id(db), 0 ).id;
+         asset_id_type topn_id = create_user_issued_asset( "TOPN", actanet_id(db), 0 ).id;
          authority stan_owner_auth = stan_id(db).owner;
          authority stan_active_auth = stan_id(db).active;
 

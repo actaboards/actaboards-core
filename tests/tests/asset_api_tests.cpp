@@ -42,8 +42,8 @@ BOOST_AUTO_TEST_CASE( asset_holders )
    graphene::app::asset_api asset_api(app);
 
    // create an asset and some accounts
-   auto rsquaredchp1 = create_account("rsquaredchp1");
-   create_user_issued_asset("USD", rsquaredchp1, 0);
+   auto actanet = create_account("actanet");
+   create_user_issued_asset("USD", actanet, 0);
    auto dan = create_account("dan");
    auto bob = create_account("bob");
    auto alice = create_account("alice");
@@ -68,8 +68,8 @@ BOOST_AUTO_TEST_CASE( api_limit_get_asset_holders )
    graphene::app::asset_api asset_api(app);
 
    // create an asset and some accounts
-   auto rsquaredchp1 = create_account("rsquaredchp1");
-   create_user_issued_asset("USD", rsquaredchp1, 0);
+   auto actanet = create_account("actanet");
+   create_user_issued_asset("USD", actanet, 0);
    auto dan = create_account("dan");
    auto bob = create_account("bob");
    auto alice = create_account("alice");

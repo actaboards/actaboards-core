@@ -215,11 +215,11 @@ proposal_create_operation create_proposal(const database& db, const account_id_t
 BOOST_AUTO_TEST_CASE( htlc_hf_bsip64 )
 {
 try {
-   ACTORS((rsquaredchp1)(bob)(joker));
+   ACTORS((actanet)(bob)(joker));
 
    int64_t init_balance(100 * GRAPHENE_BLOCKCHAIN_PRECISION);
 
-   transfer( committee_account, rsquaredchp1_id, graphene::chain::asset(init_balance) );
+   transfer( committee_account, actanet_id, graphene::chain::asset(init_balance) );
    transfer( committee_account, joker_id, graphene::chain::asset(init_balance) );
    transfer( committee_account, bob_id, graphene::chain::asset(init_balance) );
 
@@ -229,7 +229,7 @@ try {
    std::vector<char> pre_image(256);
    generate_random_preimage(preimage_size, pre_image);
 
-   graphene::chain::htlc_id_type rsquaredchp1_htlc_id;
+   graphene::chain::htlc_id_type actanet_htlc_id;
    // cler everything out
    generate_block();
    trx.clear();
@@ -238,39 +238,39 @@ try {
     * Proposals
     */
    {
-      BOOST_TEST_MESSAGE("RSquaredCHP1 is creating a proposal with an HTLC that contains a memo (should pass)");
+      BOOST_TEST_MESSAGE("actanet is creating a proposal with an HTLC that contains a memo (should pass)");
       memo_data data;
-      data.from = rsquaredchp1_public_key;
+      data.from = actanet_public_key;
       data.to = bob_public_key;
-      data.set_message( rsquaredchp1_private_key, bob_public_key, "Dear Bob,\n\nMoney!\n\nPeace, RSquaredCHP1");
-      graphene::chain::htlc_create_operation create_operation = create_htlc(db, rsquaredchp1_id, bob_id, 
+      data.set_message( actanet_private_key, bob_public_key, "Dear Bob,\n\nMoney!\n\nPeace, actanet");
+      graphene::chain::htlc_create_operation create_operation = create_htlc(db, actanet_id, bob_id, 
             asset(3 * GRAPHENE_BLOCKCHAIN_PRECISION), hash_it<fc::sha256>(pre_image), 0, 60, data);
       graphene::chain::proposal_create_operation prop1 = create_proposal(
-            db, rsquaredchp1_id, create_operation, db.head_block_time() + 100);
+            db, actanet_id, create_operation, db.head_block_time() + 100);
       trx.operations.push_back(prop1);
-      sign(trx, rsquaredchp1_private_key);
+      sign(trx, actanet_private_key);
       PUSH_TX(db, trx, ~0);
       trx.clear();
    }   
    {
-      BOOST_TEST_MESSAGE("RSquaredCHP1 is creating a proposal with HASH160 (should pass)");
-      graphene::chain::htlc_create_operation create_operation = create_htlc(db, rsquaredchp1_id, bob_id, 
+      BOOST_TEST_MESSAGE("actanet is creating a proposal with HASH160 (should pass)");
+      graphene::chain::htlc_create_operation create_operation = create_htlc(db, actanet_id, bob_id, 
             asset(3 * GRAPHENE_BLOCKCHAIN_PRECISION), hash_it<fc::hash160>(pre_image), 0, 60);
       graphene::chain::proposal_create_operation prop1 = create_proposal(
-            db, rsquaredchp1_id, create_operation, db.head_block_time() + 100);
+            db, actanet_id, create_operation, db.head_block_time() + 100);
       trx.operations.push_back(prop1);
-      sign(trx, rsquaredchp1_private_key);
+      sign(trx, actanet_private_key);
       PUSH_TX(db, trx, ~0);
       trx.clear();
    }
    {
-      BOOST_TEST_MESSAGE("RSquaredCHP1 is creating a proposal with a preimage size of 0 (should pass)");
-      graphene::chain::htlc_create_operation create_operation = create_htlc(db, rsquaredchp1_id, bob_id, 
+      BOOST_TEST_MESSAGE("actanet is creating a proposal with a preimage size of 0 (should pass)");
+      graphene::chain::htlc_create_operation create_operation = create_htlc(db, actanet_id, bob_id, 
             asset(3 * GRAPHENE_BLOCKCHAIN_PRECISION), hash_it<fc::sha256>(pre_image), 0, 60);
       graphene::chain::proposal_create_operation prop1 = create_proposal(
-            db, rsquaredchp1_id, create_operation, db.head_block_time() + 100);
+            db, actanet_id, create_operation, db.head_block_time() + 100);
       trx.operations.push_back(prop1);
-      sign(trx, rsquaredchp1_private_key);
+      sign(trx, actanet_private_key);
       PUSH_TX(db, trx, ~0);
       trx.clear();
    }
@@ -278,31 +278,31 @@ try {
     * HTLC Contracts (non-proposals)
     */
    {
-      BOOST_TEST_MESSAGE("RSquaredCHP1 is creating an HTLC that contains a memo after the hardfork (should pass)");
+      BOOST_TEST_MESSAGE("actanet is creating an HTLC that contains a memo after the hardfork (should pass)");
       memo_data data;
-      data.from = rsquaredchp1_public_key;
+      data.from = actanet_public_key;
       data.to = bob_public_key;
-      data.set_message( rsquaredchp1_private_key, bob_public_key, "Dear Bob,\n\nMoney!\n\nPeace, RSquaredCHP1");
-      graphene::chain::htlc_create_operation create_operation = create_htlc(db, rsquaredchp1_id, bob_id, 
+      data.set_message( actanet_private_key, bob_public_key, "Dear Bob,\n\nMoney!\n\nPeace, actanet");
+      graphene::chain::htlc_create_operation create_operation = create_htlc(db, actanet_id, bob_id, 
             asset(3 * GRAPHENE_BLOCKCHAIN_PRECISION), hash_it<fc::sha256>(pre_image), 0, 60, data);
       trx.operations.push_back(create_operation);
-      sign(trx, rsquaredchp1_private_key);
+      sign(trx, actanet_private_key);
       PUSH_TX(db, trx, ~0);
       trx.clear();
    }   
    {
-      BOOST_TEST_MESSAGE("RSquaredCHP1 is creating an HTLC with HASH160 (should pass)");
-      graphene::chain::htlc_create_operation create_operation = create_htlc(db, rsquaredchp1_id, bob_id, 
+      BOOST_TEST_MESSAGE("actanet is creating an HTLC with HASH160 (should pass)");
+      graphene::chain::htlc_create_operation create_operation = create_htlc(db, actanet_id, bob_id, 
             asset(3 * GRAPHENE_BLOCKCHAIN_PRECISION), hash_it<fc::hash160>(pre_image), 0, 60);
       trx.operations.push_back(create_operation);
-      sign(trx, rsquaredchp1_private_key);
+      sign(trx, actanet_private_key);
       PUSH_TX(db, trx, ~0);
       trx.clear();
    }
 
-   // RSquaredCHP1 creates an asset
+   // actanet creates an asset
    BOOST_TEST_MESSAGE("Create RSQRCHP1COIN so transfer_restricted can be controlled");
-   const asset_id_type uia_id = create_user_issued_asset( "RSQRCHP1COIN", rsquaredchp1, transfer_restricted).id;
+   const asset_id_type uia_id = create_user_issued_asset( "RSQRCHP1COIN", actanet, transfer_restricted).id;
    BOOST_TEST_MESSAGE("Issuing RSQRCHP1COIN to Bob");
    issue_uia(bob, asset(10000, uia_id) );
    // verify transfer restrictions are in place
@@ -314,7 +314,7 @@ try {
       graphene::chain::htlc_create_operation create_operation = create_htlc(db, bob_id, joker_id,
          asset(3, uia_id), hash_it<fc::sha256>(pre_image), preimage_size, 60);
       trx.operations.push_back(create_operation);
-      sign(trx, rsquaredchp1_private_key);
+      sign(trx, actanet_private_key);
       REQUIRE_EXCEPTION_WITH_TEXT(PUSH_TX(db, trx, ~0), "transfer_restricted");
       trx.clear();
    }
@@ -332,13 +332,13 @@ try {
    }
    {
       BOOST_TEST_MESSAGE("A memo field should include a charge per kb (uses fee from transfer_operation)");
-      htlc_create_operation op = create_htlc(db, rsquaredchp1_id, bob_id, asset(3), hash_it<fc::sha256>(pre_image),
+      htlc_create_operation op = create_htlc(db, actanet_id, bob_id, asset(3), hash_it<fc::sha256>(pre_image),
             preimage_size, 60);
       asset no_memo_fee = op.fee;
       memo_data data;
-      data.from = rsquaredchp1_public_key;
+      data.from = actanet_public_key;
       data.to = bob_public_key;
-      data.set_message( rsquaredchp1_private_key, bob_public_key, "Dear Bob,\n\nMoney!\n\nPeace, RSquaredCHP1");
+      data.set_message( actanet_private_key, bob_public_key, "Dear Bob,\n\nMoney!\n\nPeace, actanet");
       op.extensions.value.memo = data;
       asset with_memo_fee = db.current_fee_schedule().calculate_fee(op);
       BOOST_CHECK_GT( with_memo_fee.amount.value, no_memo_fee.amount.value );
@@ -348,10 +348,10 @@ try {
    {
       // case 1: 0 preimage with 0 preimage_size
       BOOST_TEST_MESSAGE("Attempt to create an HTLC with no preimage (should pass)");
-      htlc_create_operation op = create_htlc(db, rsquaredchp1_id, bob_id, asset(3 * GRAPHENE_BLOCKCHAIN_PRECISION),
+      htlc_create_operation op = create_htlc(db, actanet_id, bob_id, asset(3 * GRAPHENE_BLOCKCHAIN_PRECISION),
             hash_it<fc::sha256>(std::vector<char>()), 0, 60);
       trx.operations.push_back(op);
-      sign(trx, rsquaredchp1_private_key);
+      sign(trx, actanet_private_key);
       graphene::protocol::processed_transaction results = PUSH_TX(db, trx, ~0);
       trx.operations.clear();
       htlc_id_type htlc_id = results.operation_results[0].get<object_id_type>();
@@ -375,10 +375,10 @@ try {
    }
    {
       // case 2: a real preimage with 0 preimage size
-      htlc_create_operation op = create_htlc(db, rsquaredchp1_id, bob_id, asset(3 * GRAPHENE_BLOCKCHAIN_PRECISION),
+      htlc_create_operation op = create_htlc(db, actanet_id, bob_id, asset(3 * GRAPHENE_BLOCKCHAIN_PRECISION),
             hash_it<fc::hash160>(pre_image), 0, 60);
       trx.operations.push_back(op);
-      sign(trx, rsquaredchp1_private_key);
+      sign(trx, actanet_private_key);
       graphene::protocol::processed_transaction results = PUSH_TX(db, trx, ~0);
       trx.operations.clear();
       htlc_id_type htlc_id = results.operation_results[0].get<object_id_type>();
@@ -813,20 +813,20 @@ BOOST_AUTO_TEST_CASE( fee_calculations )
 BOOST_AUTO_TEST_CASE( htlc_blacklist )
 {
 try {
-   ACTORS((rsquaredchp1)(alice)(bob));
+   ACTORS((actanet)(alice)(bob));
 
-   upgrade_to_lifetime_member( rsquaredchp1 );
+   upgrade_to_lifetime_member( actanet );
 
    // create a UIA
-   const asset_id_type uia_id = create_user_issued_asset( "RSQRCHP1COIN", rsquaredchp1, white_list ).id;
+   const asset_id_type uia_id = create_user_issued_asset( "RSQRCHP1COIN", actanet, white_list ).id;
    // Make a whitelist authority
    {
       BOOST_TEST_MESSAGE( "Changing the whitelist authority" );
       asset_update_operation uop;
-      uop.issuer = rsquaredchp1_id;
+      uop.issuer = actanet_id;
       uop.asset_to_update = uia_id;
       uop.new_options = uia_id(db).options;
-      uop.new_options.blacklist_authorities.insert(rsquaredchp1_id);
+      uop.new_options.blacklist_authorities.insert(actanet_id);
       trx.operations.push_back(uop);
       PUSH_TX( db, trx, ~0 );
       trx.operations.clear();
@@ -842,12 +842,12 @@ try {
    // blacklist bob
    {
       graphene::chain::account_whitelist_operation op;
-      op.authorizing_account = rsquaredchp1_id;
+      op.authorizing_account = actanet_id;
       op.account_to_list = bob_id;
       op.new_listing = graphene::chain::account_whitelist_operation::account_listing::black_listed;
       op.fee = db.current_fee_schedule().calculate_fee( op );
       trx.operations.push_back( op );
-      sign( trx, rsquaredchp1_private_key );
+      sign( trx, actanet_private_key );
       PUSH_TX( db, trx, ~0 );
       trx.clear();
       generate_block();
@@ -880,12 +880,12 @@ try {
    // unblacklist Bob
    {
       graphene::chain::account_whitelist_operation op;
-      op.authorizing_account = rsquaredchp1_id;
+      op.authorizing_account = actanet_id;
       op.account_to_list = bob_id;
       op.new_listing = graphene::chain::account_whitelist_operation::account_listing::no_listing;
       op.fee = db.current_fee_schedule().calculate_fee( op );
       trx.operations.push_back( op );
-      sign( trx, rsquaredchp1_private_key );
+      sign( trx, actanet_private_key );
       PUSH_TX( db, trx, ~0 );
       trx.clear();
       generate_block();
@@ -916,12 +916,12 @@ try {
    // blacklist bob
    {
       graphene::chain::account_whitelist_operation op;
-      op.authorizing_account = rsquaredchp1_id;
+      op.authorizing_account = actanet_id;
       op.account_to_list = bob_id;
       op.new_listing = graphene::chain::account_whitelist_operation::account_listing::black_listed;
       op.fee = db.current_fee_schedule().calculate_fee( op );
       trx.operations.push_back( op );
-      sign( trx, rsquaredchp1_private_key );
+      sign( trx, actanet_private_key );
       PUSH_TX( db, trx, ~0 );
       trx.clear();
       generate_block();
