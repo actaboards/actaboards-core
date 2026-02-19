@@ -56,6 +56,7 @@ namespace graphene { namespace chain {
             string   content_key;
             string   storage_data;
             optional<room_id_type> room;  // Optional room for encrypted threads
+            uint32_t key_epoch = 0;       // Epoch of the room key used to encrypt this card
         };
 
         struct by_subject_account;

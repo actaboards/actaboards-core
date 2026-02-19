@@ -76,4 +76,16 @@ private:
    const room_object* _room = nullptr;
 };
 
+class room_rotate_key_evaluator : public evaluator<room_rotate_key_evaluator>
+{
+public:
+   typedef room_rotate_key_operation operation_type;
+
+   void_result do_evaluate( const room_rotate_key_operation& o );
+   object_id_type do_apply( const room_rotate_key_operation& o );
+
+private:
+   const room_object* _room = nullptr;
+};
+
 } } // graphene::chain

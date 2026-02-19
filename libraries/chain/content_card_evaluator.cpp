@@ -65,11 +65,17 @@ object_id_type content_card_create_evaluator::do_apply( const content_card_creat
    const auto& node_properties = d.get_node_properties();
    bool use_full_content_card = node_properties.active_plugins.find("content_cards") != node_properties.active_plugins.end();
 
-   const auto& new_content_object = d.create<content_card_object>( [&o, &use_full_content_card]( content_card_object& obj )
+   const auto& new_content_object = d.create<content_card_object>( [&o, &use_full_content_card, &d]( content_card_object& obj )
    {
          obj.subject_account = o.subject_account;
          obj.hash            = o.hash;
          obj.room            = o.room;
+
+         if( o.room.valid() )
+         {
+            const auto& room_obj = d.get(*o.room);
+            obj.key_epoch = room_obj.current_epoch;
+         }
 
          if (use_full_content_card) {
             obj.url             = o.url;

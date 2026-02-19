@@ -985,6 +985,28 @@ class database_api
                                                                 const room_participant_id_type participant_id,
                                                                 uint32_t limit ) const;
 
+      /**
+       * @brief Get key epochs for a participant in a room
+       * @param room The room id
+       * @param participant The participant account
+       * @param limit Maximum number of epoch objects to fetch
+       * @return The list of room key epoch objects
+       */
+      vector<room_key_epoch_object> get_room_key_epochs( const room_id_type room,
+                                                          const account_id_type participant,
+                                                          uint32_t limit ) const;
+
+      /**
+       * @brief Get a specific key epoch for a participant in a room
+       * @param room The room id
+       * @param epoch The epoch number
+       * @param participant The participant account
+       * @return The room key epoch object, if found
+       */
+      fc::optional<room_key_epoch_object> get_room_key_epoch( const room_id_type room,
+                                                               uint32_t epoch,
+                                                               const account_id_type participant ) const;
+
       //////////
       // HTLC //
       //////////
@@ -1165,6 +1187,8 @@ FC_API(graphene::app::database_api,
    (get_room_participants)
    (get_room_participant)
    (get_rooms_by_participant)
+   (get_room_key_epochs)
+   (get_room_key_epoch)
 
    // HTLC
    (get_htlc)

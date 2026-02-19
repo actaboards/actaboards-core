@@ -871,6 +871,43 @@ namespace graphene { namespace wallet { namespace detail {
       return sign_transaction(tx, broadcast);
    } FC_CAPTURE_AND_RETHROW( (owner)(room)(participant)(broadcast) ) }
 
+   signed_transaction wallet_api_impl::rotate_room_key( const string& owner,
+         const string& room,
+         const string& new_room_key,
+         const flat_map<string, string>& participant_keys,
+         bool broadcast )
+   { try {
+      auto owner_id = get_account(owner).get_id();
+      auto room_id = fc::variant(room, 1).as<room_id_type>(1);
+
+      room_rotate_key_operation rotate_op;
+      rotate_op.owner = owner_id;
+      rotate_op.room = room_id;
+      rotate_op.new_room_key = new_room_key;
+
+      for( const auto& pk : participant_keys )
+      {
+         auto participant_id = get_account(pk.first).get_id();
+         rotate_op.participant_keys[participant_id] = pk.second;
+      }
+
+      signed_transaction tx;
+      tx.operations.push_back(rotate_op);
+      set_operation_fees(tx, _remote_db->get_global_properties().parameters.get_current_fees());
+      tx.validate();
+
+      return sign_transaction(tx, broadcast);
+   } FC_CAPTURE_AND_RETHROW( (owner)(room)(new_room_key)(participant_keys)(broadcast) ) }
+
+   std::vector<room_key_epoch_object> wallet_api_impl::get_room_key_epochs( const string& room,
+         const string& participant,
+         uint32_t limit ) const
+   {
+      auto room_id = fc::variant(room, 1).as<room_id_type>(1);
+      auto account_id = get_account(participant).get_id();
+      return _remote_db->get_room_key_epochs(room_id, account_id, limit);
+   }
+
    room_object wallet_api_impl::get_room_by_id( const string& room ) const
    {
       auto room_id = fc::variant(room, 1).as<room_id_type>(1);

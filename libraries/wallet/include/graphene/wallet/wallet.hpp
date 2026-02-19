@@ -1837,6 +1837,36 @@ class wallet_api
             uint64_t start_record,
             unsigned limit = 100 ) const;
 
+      /**
+       * Rotate the room key, creating a new epoch.
+       *
+       * @param owner the account that owns the room.
+       * @param room the room id in canonical format (1.24.x).
+       * @param new_room_key the new room key encrypted for the owner.
+       * @param participant_keys map of account_name -> encrypted_key for each participant.
+       * @param broadcast true if you wish to broadcast the transaction.
+       * @returns the signed version of the transaction
+       */
+      signed_transaction rotate_room_key(
+            const string& owner,
+            const string& room,
+            const string& new_room_key,
+            const flat_map<string, string>& participant_keys,
+            bool broadcast = false ) const;
+
+      /**
+       * Returns key epochs for a participant in a room.
+       *
+       * @param room the room id in canonical format (1.24.x).
+       * @param participant the participant account.
+       * @param limit maximum number of epoch objects to retrieve.
+       * @returns the list of room key epoch objects.
+       */
+      std::vector<room_key_epoch_object> get_room_key_epochs(
+            const string& room,
+            const string& participant,
+            uint32_t limit = 100 ) const;
+
       void dbg_make_uia(string creator, string symbol);
       void dbg_make_mia(string creator, string symbol);
       void dbg_push_blocks( std::string src_filename, uint32_t count );
@@ -2035,8 +2065,10 @@ FC_API( graphene::wallet::wallet_api,
         (update_room)
         (add_room_participant)
         (remove_room_participant)
+        (rotate_room_key)
         (get_room_by_id)
         (get_rooms_by_owner)
         (get_room_participants)
         (get_rooms_by_participant)
+        (get_room_key_epochs)
       )

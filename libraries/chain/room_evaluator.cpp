@@ -66,6 +66,15 @@ object_id_type room_create_evaluator::do_apply( const room_create_operation& o )
       obj.timestamp   = time_point::now().sec_since_epoch();
    });
 
+   // Create epoch 0 key record for owner
+   d.create<room_key_epoch_object>( [&o, &new_room]( room_key_epoch_object& obj )
+   {
+      obj.room        = new_room.id;
+      obj.epoch       = 0;
+      obj.participant = o.owner;
+      obj.content_key = o.room_key;
+   });
+
    return new_room.id;
 } FC_CAPTURE_AND_RETHROW((o)) }
 
@@ -130,6 +139,27 @@ object_id_type room_add_participant_evaluator::do_apply( const room_add_particip
       obj.timestamp   = time_point::now().sec_since_epoch();
    });
 
+   // Create epoch key record for current epoch
+   d.create<room_key_epoch_object>( [&o, this]( room_key_epoch_object& obj )
+   {
+      obj.room        = o.room;
+      obj.epoch       = _room->current_epoch;
+      obj.participant = o.participant;
+      obj.content_key = o.content_key;
+   });
+
+   // Create historical epoch key records if provided
+   for( const auto& epoch_entry : o.epoch_keys )
+   {
+      d.create<room_key_epoch_object>( [&o, &epoch_entry]( room_key_epoch_object& obj )
+      {
+         obj.room        = o.room;
+         obj.epoch       = epoch_entry.first;
+         obj.participant = o.participant;
+         obj.content_key = epoch_entry.second;
+      });
+   }
+
    return new_participant.id;
 } FC_CAPTURE_AND_RETHROW((o)) }
 
@@ -156,6 +186,84 @@ object_id_type room_remove_participant_evaluator::do_apply( const room_remove_pa
    d.remove(*_participant);
 
    return participant_id;
+} FC_CAPTURE_AND_RETHROW((o)) }
+
+// ============ room_rotate_key_evaluator ============
+
+void_result room_rotate_key_evaluator::do_evaluate( const room_rotate_key_operation& op )
+{ try {
+   database& d = db();
+
+   _room = &d.get(op.room);
+   FC_ASSERT(_room->owner == op.owner, "Only owner can rotate room key.");
+
+   // Collect current participants
+   const auto& participant_idx = d.get_index_type<room_participant_index>();
+   const auto& by_room_idx = participant_idx.indices().get<by_room>();
+
+   flat_set<account_id_type> current_participants;
+   auto itr = by_room_idx.lower_bound(op.room);
+   while( itr != by_room_idx.end() && itr->room == op.room )
+   {
+      current_participants.insert(itr->participant);
+      ++itr;
+   }
+
+   // Check that participant_keys covers all current participants
+   for( const auto& p : current_participants )
+   {
+      FC_ASSERT( op.participant_keys.count(p) > 0,
+                 "Missing key for participant ${p}", ("p", p) );
+   }
+
+   // Check that participant_keys doesn't contain non-participants
+   for( const auto& pk : op.participant_keys )
+   {
+      FC_ASSERT( current_participants.count(pk.first) > 0,
+                 "Key provided for non-participant ${p}", ("p", pk.first) );
+   }
+
+   return void_result();
+} FC_CAPTURE_AND_RETHROW( (op) ) }
+
+object_id_type room_rotate_key_evaluator::do_apply( const room_rotate_key_operation& o )
+{ try {
+   database& d = db();
+
+   // Increment epoch and update room key
+   uint32_t new_epoch = _room->current_epoch + 1;
+   d.modify(*_room, [&o, new_epoch](room_object& obj) {
+      obj.current_epoch = new_epoch;
+      obj.room_key = o.new_room_key;
+   });
+
+   // Update participant content_keys and create epoch records
+   const auto& participant_idx = d.get_index_type<room_participant_index>();
+   const auto& by_room_idx = participant_idx.indices().get<by_room>();
+
+   auto itr = by_room_idx.lower_bound(o.room);
+   while( itr != by_room_idx.end() && itr->room == o.room )
+   {
+      auto pk_itr = o.participant_keys.find(itr->participant);
+      if( pk_itr != o.participant_keys.end() )
+      {
+         d.modify(*itr, [&pk_itr](room_participant_object& obj) {
+            obj.content_key = pk_itr->second;
+         });
+
+         // Create epoch key record
+         d.create<room_key_epoch_object>( [&o, &pk_itr, new_epoch]( room_key_epoch_object& obj )
+         {
+            obj.room        = o.room;
+            obj.epoch       = new_epoch;
+            obj.participant = pk_itr->first;
+            obj.content_key = pk_itr->second;
+         });
+      }
+      ++itr;
+   }
+
+   return _room->id;
 } FC_CAPTURE_AND_RETHROW((o)) }
 
 } } // graphene::chain

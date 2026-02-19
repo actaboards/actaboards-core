@@ -458,6 +458,16 @@ public:
          const string& participant,
          bool broadcast = false );
 
+   signed_transaction rotate_room_key( const string& owner,
+         const string& room,
+         const string& new_room_key,
+         const flat_map<string, string>& participant_keys,
+         bool broadcast = false );
+
+   std::vector<room_key_epoch_object> get_room_key_epochs( const string& room,
+         const string& participant,
+         uint32_t limit = 100 ) const;
+
    room_object get_room_by_id( const string& room ) const;
 
    std::vector<room_object> get_rooms_by_owner( const string& owner,

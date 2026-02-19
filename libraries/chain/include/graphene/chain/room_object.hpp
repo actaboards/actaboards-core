@@ -53,6 +53,7 @@ namespace graphene { namespace chain {
       string          name;        // Room name
       string          room_key;    // Encrypted room key (for owner)
       uint64_t        timestamp;   // Creation timestamp
+      uint32_t        current_epoch = 0;  // Current key epoch
    };
 
    /**
@@ -124,13 +125,69 @@ namespace graphene { namespace chain {
 
    typedef generic_index<room_participant_object, room_participant_multi_index_type> room_participant_index;
 
+   // ============ Room Key Epoch Object ============
+
+   /**
+    * @brief Room key epoch object - stores per-participant encrypted keys for each epoch
+    * @ingroup object
+    * @ingroup protocol
+    */
+   class room_key_epoch_object : public graphene::db::abstract_object<room_key_epoch_object>
+   {
+   public:
+      static constexpr uint8_t space_id = protocol_ids;
+      static constexpr uint8_t type_id  = room_key_epoch_object_type;
+
+      room_id_type    room;
+      uint32_t        epoch;          // Key epoch number
+      account_id_type participant;    // Participant account
+      string          content_key;    // Epoch key encrypted for this participant
+   };
+
+   // ============ Room Key Epoch Indexes ============
+
+   struct by_room_and_epoch;
+   struct by_room_epoch_participant;
+   struct by_room_and_participant_epoch;
+
+   typedef multi_index_container<
+      room_key_epoch_object,
+      indexed_by<
+         ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
+         ordered_non_unique< tag<by_room_and_epoch>,
+            composite_key< room_key_epoch_object,
+               member< room_key_epoch_object, room_id_type, &room_key_epoch_object::room>,
+               member< room_key_epoch_object, uint32_t, &room_key_epoch_object::epoch>
+            >
+         >,
+         ordered_unique< tag<by_room_epoch_participant>,
+            composite_key< room_key_epoch_object,
+               member< room_key_epoch_object, room_id_type, &room_key_epoch_object::room>,
+               member< room_key_epoch_object, uint32_t, &room_key_epoch_object::epoch>,
+               member< room_key_epoch_object, account_id_type, &room_key_epoch_object::participant>
+            >
+         >,
+         ordered_non_unique< tag<by_room_and_participant_epoch>,
+            composite_key< room_key_epoch_object,
+               member< room_key_epoch_object, room_id_type, &room_key_epoch_object::room>,
+               member< room_key_epoch_object, account_id_type, &room_key_epoch_object::participant>
+            >
+         >
+      >
+   > room_key_epoch_multi_index_type;
+
+   typedef generic_index<room_key_epoch_object, room_key_epoch_multi_index_type> room_key_epoch_index;
+
 } } // graphene::chain
 
 MAP_OBJECT_ID_TO_TYPE(graphene::chain::room_object)
 MAP_OBJECT_ID_TO_TYPE(graphene::chain::room_participant_object)
+MAP_OBJECT_ID_TO_TYPE(graphene::chain::room_key_epoch_object)
 
 FC_REFLECT_TYPENAME( graphene::chain::room_object )
 FC_REFLECT_TYPENAME( graphene::chain::room_participant_object )
+FC_REFLECT_TYPENAME( graphene::chain::room_key_epoch_object )
 
 GRAPHENE_DECLARE_EXTERNAL_SERIALIZATION( graphene::chain::room_object )
 GRAPHENE_DECLARE_EXTERNAL_SERIALIZATION( graphene::chain::room_participant_object )
+GRAPHENE_DECLARE_EXTERNAL_SERIALIZATION( graphene::chain::room_key_epoch_object )
