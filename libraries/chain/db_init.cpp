@@ -152,6 +152,7 @@ void database::initialize_evaluators()
    register_evaluator<room_update_evaluator>();
    register_evaluator<room_add_participant_evaluator>();
    register_evaluator<room_remove_participant_evaluator>();
+   register_evaluator<room_rotate_key_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -203,6 +204,7 @@ void database::initialize_indexes()
    add_index< primary_index< commit_reveal_index,                       20> >();
    add_index< primary_index< room_index,                                20> >();
    add_index< primary_index< room_participant_index,                    20> >();
+   add_index< primary_index< room_key_epoch_index,                     20> >();
 }
 
 void database::init_genesis(const genesis_state_type& genesis_state)

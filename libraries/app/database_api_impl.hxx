@@ -225,6 +225,12 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       vector<room_participant_object> get_rooms_by_participant( const account_id_type participant,
                                                                 const room_participant_id_type participant_id,
                                                                 uint32_t limit ) const;
+      vector<room_key_epoch_object> get_room_key_epochs( const room_id_type room,
+                                                          const account_id_type participant,
+                                                          uint32_t limit ) const;
+      fc::optional<room_key_epoch_object> get_room_key_epoch( const room_id_type room,
+                                                               uint32_t epoch,
+                                                               const account_id_type participant ) const;
 
       ////////////////////////////////////////////////
       // Accounts

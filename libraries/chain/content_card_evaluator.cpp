@@ -65,11 +65,17 @@ object_id_type content_card_create_evaluator::do_apply( const content_card_creat
    const auto& node_properties = d.get_node_properties();
    bool use_full_content_card = node_properties.active_plugins.find("content_cards") != node_properties.active_plugins.end();
 
-   const auto& new_content_object = d.create<content_card_object>( [&o, &use_full_content_card]( content_card_object& obj )
+   const auto& new_content_object = d.create<content_card_object>( [&o, &use_full_content_card, &d]( content_card_object& obj )
    {
          obj.subject_account = o.subject_account;
          obj.hash            = o.hash;
          obj.room            = o.room;
+
+         if( o.room.valid() )
+         {
+            const auto& room_obj = d.get(*o.room);
+            obj.key_epoch = room_obj.current_epoch;
+         }
 
          if (use_full_content_card) {
             obj.url             = o.url;
@@ -117,7 +123,7 @@ object_id_type content_card_update_evaluator::do_apply( const content_card_updat
 
    auto itr = content_op_idx.lower_bound(boost::make_tuple(o.subject_account, o.hash));
 
-   d.modify( *itr, [&o](content_card_object& obj){
+   d.modify( *itr, [&o, &d](content_card_object& obj){
          obj.subject_account = o.subject_account;
          obj.hash            = o.hash;
          obj.url             = o.url;
@@ -127,6 +133,16 @@ object_id_type content_card_update_evaluator::do_apply( const content_card_updat
          obj.timestamp       = time_point::now().sec_since_epoch();
          obj.storage_data    = o.storage_data;
          obj.room            = o.room;
+
+         if( o.room.valid() )
+         {
+            const auto& room_obj = d.get(*o.room);
+            obj.key_epoch = room_obj.current_epoch;
+         }
+         else
+         {
+            obj.key_epoch = 0;
+         }
    });
 
    return itr->id;

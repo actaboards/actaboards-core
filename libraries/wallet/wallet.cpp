@@ -1187,6 +1187,24 @@ std::vector<room_participant_object> wallet_api::get_rooms_by_participant(
    return my->get_rooms_by_participant(participant, start_record, limit);
 }
 
+signed_transaction wallet_api::rotate_room_key(
+      const string& owner,
+      const string& room,
+      const string& new_room_key,
+      const flat_map<string, string>& participant_keys,
+      bool broadcast ) const
+{
+   return my->rotate_room_key(owner, room, new_room_key, participant_keys, broadcast);
+}
+
+std::vector<room_key_epoch_object> wallet_api::get_room_key_epochs(
+      const string& room,
+      const string& participant,
+      uint32_t limit ) const
+{
+   return my->get_room_key_epochs(room, participant, limit);
+}
+
 string wallet_api::help()const
 {
    std::vector<std::string> method_names = my->method_documentation.get_method_names();

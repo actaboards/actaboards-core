@@ -124,7 +124,8 @@ namespace graphene { namespace protocol {
             /* 65 */ room_create_operation,
             /* 66 */ room_update_operation,
             /* 67 */ room_add_participant_operation,
-            /* 68 */ room_remove_participant_operation
+            /* 68 */ room_remove_participant_operation,
+            /* 69 */ room_rotate_key_operation
          > operation;
 
    /// @} // operations group

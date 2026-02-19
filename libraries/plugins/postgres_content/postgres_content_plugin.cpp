@@ -11,6 +11,7 @@
 #include <graphene/protocol/content_card.hpp>
 #include <graphene/protocol/permission.hpp>
 #include <graphene/protocol/room.hpp>
+#include <graphene/chain/room_object.hpp>
 
 #include <libpq-fe.h>
 
@@ -77,6 +78,9 @@ class postgres_content_plugin_impl
       void handle_room_remove_participant(const room_remove_participant_operation& op,
                                           uint32_t block_num, fc::time_point_sec block_time,
                                           const std::string& trx_id);
+      void handle_room_rotate_key(const room_rotate_key_operation& op,
+                                   uint32_t block_num, fc::time_point_sec block_time,
+                                   const std::string& trx_id);
 
       postgres_content_plugin& _self;
       PGconn* pg_conn = nullptr;
@@ -148,6 +152,7 @@ bool postgres_content_plugin_impl::create_tables()
          content_key TEXT,
          storage_data TEXT,
          room_id VARCHAR(32),
+         key_epoch INTEGER NOT NULL DEFAULT 0,
          block_num BIGINT NOT NULL,
          block_time TIMESTAMP NOT NULL,
          trx_id VARCHAR(64),
@@ -192,6 +197,7 @@ bool postgres_content_plugin_impl::create_tables()
          owner VARCHAR(32) NOT NULL,
          name VARCHAR(256),
          room_key TEXT,
+         current_epoch INTEGER NOT NULL DEFAULT 0,
          block_num BIGINT NOT NULL,
          block_time TIMESTAMP NOT NULL,
          trx_id VARCHAR(64),
@@ -223,6 +229,28 @@ bool postgres_content_plugin_impl::create_tables()
       CREATE INDEX IF NOT EXISTS idx_rp_participant ON indexer_room_participants(participant);
       CREATE INDEX IF NOT EXISTS idx_rp_block_time ON indexer_room_participants(block_time DESC);
       CREATE INDEX IF NOT EXISTS idx_rp_is_removed ON indexer_room_participants(is_removed);
+
+      -- Room key epochs
+      CREATE TABLE IF NOT EXISTS indexer_room_key_epochs (
+         id                  SERIAL PRIMARY KEY,
+         room_id             VARCHAR(32) NOT NULL,
+         epoch               INTEGER NOT NULL,
+         participant         VARCHAR(32) NOT NULL,
+         content_key         TEXT,
+         block_num           BIGINT NOT NULL,
+         block_time          TIMESTAMP NOT NULL,
+         trx_id              VARCHAR(64),
+         created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+         UNIQUE(room_id, epoch, participant)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_rke_room ON indexer_room_key_epochs(room_id);
+      CREATE INDEX IF NOT EXISTS idx_rke_participant ON indexer_room_key_epochs(participant);
+      CREATE INDEX IF NOT EXISTS idx_rke_room_participant ON indexer_room_key_epochs(room_id, participant);
+
+      -- Schema upgrades for existing deployments
+      ALTER TABLE indexer_rooms ADD COLUMN IF NOT EXISTS current_epoch INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE indexer_content_cards ADD COLUMN IF NOT EXISTS key_epoch INTEGER NOT NULL DEFAULT 0;
    )";
 
    if (!execute_sql(sql)) {
@@ -324,6 +352,10 @@ void postgres_content_plugin_impl::on_block(const signed_block& b)
          handle_room_remove_participant(op.get<room_remove_participant_operation>(),
                                        block_num, b.timestamp, trx_id);
       }
+      else if (op_type == 69) {
+         handle_room_rotate_key(op.get<room_rotate_key_operation>(),
+                                block_num, b.timestamp, trx_id);
+      }
    }
 }
 
@@ -336,9 +368,14 @@ void postgres_content_plugin_impl::handle_content_card_create(
    std::string content_card_id = object_id.empty() ? ("pending-" + trx_id) : object_id;
    std::string room_id = op.room.valid() ? std::string(object_id_type(*op.room)) : "";
 
+   uint32_t key_epoch_val = 0;
+   if (op.room.valid()) {
+      try { key_epoch_val = database().get(*op.room).current_epoch; } catch (...) {}
+   }
+
    std::string sql = "INSERT INTO indexer_content_cards "
       "(content_card_id, subject_account, hash, url, type, description, content_key, storage_data, room_id, "
-      "block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
+      "key_epoch, block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
       + escape_string(content_card_id) + ", "
       + escape_string(subject_account) + ", "
       + escape_string(op.hash) + ", "
@@ -348,6 +385,7 @@ void postgres_content_plugin_impl::handle_content_card_create(
       + escape_string(op.content_key) + ", "
       + escape_string(op.storage_data) + ", "
       + (room_id.empty() ? "NULL" : escape_string(room_id)) + ", "
+      + std::to_string(key_epoch_val) + ", "
       + std::to_string(block_num) + ", "
       "to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
       + escape_string(trx_id) + ", "
@@ -355,7 +393,7 @@ void postgres_content_plugin_impl::handle_content_card_create(
       "ON CONFLICT (content_card_id) DO UPDATE SET "
       "hash = EXCLUDED.hash, url = EXCLUDED.url, type = EXCLUDED.type, "
       "description = EXCLUDED.description, content_key = EXCLUDED.content_key, "
-      "storage_data = EXCLUDED.storage_data, room_id = EXCLUDED.room_id";
+      "storage_data = EXCLUDED.storage_data, room_id = EXCLUDED.room_id, key_epoch = EXCLUDED.key_epoch";
 
    if (!execute_sql(sql)) {
       elog("Failed to insert content_card_create: block ${b}", ("b", block_num));
@@ -373,9 +411,14 @@ void postgres_content_plugin_impl::handle_content_card_update(
    std::string content_card_id = object_id.empty() ? ("pending-" + trx_id) : object_id;
    std::string room_id = op.room.valid() ? std::string(object_id_type(*op.room)) : "";
 
+   uint32_t key_epoch_val = 0;
+   if (op.room.valid()) {
+      try { key_epoch_val = database().get(*op.room).current_epoch; } catch (...) {}
+   }
+
    std::string sql = "INSERT INTO indexer_content_cards "
       "(content_card_id, subject_account, hash, url, type, description, content_key, storage_data, room_id, "
-      "block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
+      "key_epoch, block_num, block_time, trx_id, operation_type, is_removed) VALUES ("
       + escape_string(content_card_id) + ", "
       + escape_string(subject_account) + ", "
       + escape_string(op.hash) + ", "
@@ -385,6 +428,7 @@ void postgres_content_plugin_impl::handle_content_card_update(
       + escape_string(op.content_key) + ", "
       + escape_string(op.storage_data) + ", "
       + (room_id.empty() ? "NULL" : escape_string(room_id)) + ", "
+      + std::to_string(key_epoch_val) + ", "
       + std::to_string(block_num) + ", "
       "to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
       + escape_string(trx_id) + ", "
@@ -392,8 +436,8 @@ void postgres_content_plugin_impl::handle_content_card_update(
       "ON CONFLICT (content_card_id) DO UPDATE SET "
       "hash = EXCLUDED.hash, url = EXCLUDED.url, type = EXCLUDED.type, "
       "description = EXCLUDED.description, content_key = EXCLUDED.content_key, "
-      "storage_data = EXCLUDED.storage_data, room_id = EXCLUDED.room_id, block_num = EXCLUDED.block_num, "
-      "block_time = EXCLUDED.block_time, operation_type = 42";
+      "storage_data = EXCLUDED.storage_data, room_id = EXCLUDED.room_id, key_epoch = EXCLUDED.key_epoch, "
+      "block_num = EXCLUDED.block_num, block_time = EXCLUDED.block_time, operation_type = 42";
 
    if (!execute_sql(sql)) {
       elog("Failed to insert content_card_update: block ${b}", ("b", block_num));
@@ -545,22 +589,39 @@ void postgres_content_plugin_impl::handle_room_create(
 
    // Insert room
    std::string sql = "INSERT INTO indexer_rooms "
-      "(room_id, owner, name, room_key, block_num, block_time, trx_id, operation_type) VALUES ("
+      "(room_id, owner, name, room_key, current_epoch, block_num, block_time, trx_id, operation_type) VALUES ("
       + escape_string(room_id) + ", "
       + escape_string(owner) + ", "
       + escape_string(op.name) + ", "
       + escape_string(op.room_key) + ", "
+      "0, "
       + std::to_string(block_num) + ", "
       "to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
       + escape_string(trx_id) + ", "
       "65) "
       "ON CONFLICT (room_id) DO UPDATE SET "
-      "name = EXCLUDED.name, room_key = EXCLUDED.room_key";
+      "name = EXCLUDED.name, room_key = EXCLUDED.room_key, current_epoch = EXCLUDED.current_epoch";
 
    if (!execute_sql(sql)) {
       elog("Failed to insert room_create: block ${b}", ("b", block_num));
    } else {
       ilog("Indexed room_create at block ${b}, id ${id}", ("b", block_num)("id", room_id));
+   }
+
+   // Insert epoch 0 key record for owner
+   std::string epoch_sql = "INSERT INTO indexer_room_key_epochs "
+      "(room_id, epoch, participant, content_key, block_num, block_time, trx_id) VALUES ("
+      + escape_string(room_id) + ", 0, "
+      + escape_string(owner) + ", "
+      + escape_string(op.room_key) + ", "
+      + std::to_string(block_num) + ", "
+      "to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
+      + escape_string(trx_id) + ") "
+      "ON CONFLICT (room_id, epoch, participant) DO UPDATE SET "
+      "content_key = EXCLUDED.content_key";
+
+   if (!execute_sql(epoch_sql)) {
+      elog("Failed to insert room_create epoch 0: block ${b}", ("b", block_num));
    }
 
    // Also insert owner as first participant (auto-added by evaluator)
@@ -635,6 +696,45 @@ void postgres_content_plugin_impl::handle_room_add_participant(
    } else {
       ilog("Indexed room_add_participant at block ${b}, id ${id}", ("b", block_num)("id", participant_obj_id));
    }
+
+   // Insert epoch key record for current epoch
+   uint32_t current_epoch = 0;
+   try { current_epoch = database().get(op.room).current_epoch; } catch (...) {}
+
+   std::string epoch_sql = "INSERT INTO indexer_room_key_epochs "
+      "(room_id, epoch, participant, content_key, block_num, block_time, trx_id) VALUES ("
+      + escape_string(room_id) + ", "
+      + std::to_string(current_epoch) + ", "
+      + escape_string(participant) + ", "
+      + escape_string(op.content_key) + ", "
+      + std::to_string(block_num) + ", "
+      "to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
+      + escape_string(trx_id) + ") "
+      "ON CONFLICT (room_id, epoch, participant) DO UPDATE SET "
+      "content_key = EXCLUDED.content_key";
+
+   if (!execute_sql(epoch_sql)) {
+      elog("Failed to insert room_add_participant epoch: block ${b}", ("b", block_num));
+   }
+
+   // Insert historical epoch key records if provided
+   for (const auto& ek : op.epoch_keys) {
+      std::string hist_sql = "INSERT INTO indexer_room_key_epochs "
+         "(room_id, epoch, participant, content_key, block_num, block_time, trx_id) VALUES ("
+         + escape_string(room_id) + ", "
+         + std::to_string(ek.first) + ", "
+         + escape_string(participant) + ", "
+         + escape_string(ek.second) + ", "
+         + std::to_string(block_num) + ", "
+         "to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
+         + escape_string(trx_id) + ") "
+         "ON CONFLICT (room_id, epoch, participant) DO UPDATE SET "
+         "content_key = EXCLUDED.content_key";
+
+      if (!execute_sql(hist_sql)) {
+         elog("Failed to insert room_add_participant historical epoch: block ${b}", ("b", block_num));
+      }
+   }
 }
 
 void postgres_content_plugin_impl::handle_room_remove_participant(
@@ -654,6 +754,67 @@ void postgres_content_plugin_impl::handle_room_remove_participant(
       elog("Failed to update room_remove_participant: block ${b}", ("b", block_num));
    } else {
       ilog("Indexed room_remove_participant at block ${b}, id ${id}", ("b", block_num)("id", participant_id));
+   }
+}
+
+void postgres_content_plugin_impl::handle_room_rotate_key(
+   const room_rotate_key_operation& op,
+   uint32_t block_num, fc::time_point_sec block_time, const std::string& trx_id)
+{
+   std::string room_id = std::string(object_id_type(op.room));
+   std::string owner = std::string(object_id_type(op.owner));
+
+   // Get new epoch from chain (already incremented by evaluator)
+   uint32_t new_epoch = 0;
+   try { new_epoch = database().get(op.room).current_epoch; } catch (...) {}
+
+   // Update room key and epoch
+   std::string sql = "UPDATE indexer_rooms SET "
+      "room_key = " + escape_string(op.new_room_key) + ", "
+      "current_epoch = " + std::to_string(new_epoch) + ", "
+      "block_num = " + std::to_string(block_num) + ", "
+      "block_time = to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
+      "operation_type = 69 "
+      "WHERE room_id = " + escape_string(room_id);
+
+   if (!execute_sql(sql)) {
+      elog("Failed to update room_rotate_key: block ${b}", ("b", block_num));
+   } else {
+      ilog("Indexed room_rotate_key at block ${b}, epoch ${e}", ("b", block_num)("e", new_epoch));
+   }
+
+   // Update participant content_keys and create epoch records
+   for (const auto& pk : op.participant_keys) {
+      std::string participant = std::string(object_id_type(pk.first));
+
+      // Update participant content_key
+      std::string upd_sql = "UPDATE indexer_room_participants SET "
+         "content_key = " + escape_string(pk.second) + ", "
+         "block_num = " + std::to_string(block_num) + ", "
+         "block_time = to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
+         "operation_type = 69 "
+         "WHERE room_id = " + escape_string(room_id) + " AND participant = " + escape_string(participant);
+
+      if (!execute_sql(upd_sql)) {
+         elog("Failed to update participant key in room_rotate_key: block ${b}", ("b", block_num));
+      }
+
+      // Insert epoch key record
+      std::string epoch_sql = "INSERT INTO indexer_room_key_epochs "
+         "(room_id, epoch, participant, content_key, block_num, block_time, trx_id) VALUES ("
+         + escape_string(room_id) + ", "
+         + std::to_string(new_epoch) + ", "
+         + escape_string(participant) + ", "
+         + escape_string(pk.second) + ", "
+         + std::to_string(block_num) + ", "
+         "to_timestamp(" + std::to_string(block_time.sec_since_epoch()) + "), "
+         + escape_string(trx_id) + ") "
+         "ON CONFLICT (room_id, epoch, participant) DO UPDATE SET "
+         "content_key = EXCLUDED.content_key";
+
+      if (!execute_sql(epoch_sql)) {
+         elog("Failed to insert epoch record in room_rotate_key: block ${b}", ("b", block_num));
+      }
    }
 }
 
